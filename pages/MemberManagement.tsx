@@ -88,11 +88,13 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ onLogout }) => {
   // ... inside logic
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [newReligiousName, setNewReligiousName] = useState('');
+  const [newRole, setNewRole] = useState('');
   const [savingOrixa, setSavingOrixa] = useState(false);
 
   const openEditModal = (member: Member) => {
     setEditingMember(member);
     setNewReligiousName(member.orixa !== '-' ? member.orixa : '');
+    setNewRole(member.role || 'Membro');
   };
 
   const handleSaveOrixa = async () => {
@@ -101,17 +103,25 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ onLogout }) => {
     try {
       const { error } = await supabase
         .from('members')
-        .update({ religious_name: newReligiousName })
+        .update({
+          religious_name: newReligiousName,
+          role: newRole
+        })
         .eq('id', editingMember.id);
 
       if (error) throw error;
 
-      // Update local state
-      setMembers(members.map(m => m.id === editingMember.id ? { ...m, orixa: newReligiousName || '-' } : m));
+      // Update local state and refresh full list to be safe or just map
+      // Let's just update local map for speed
+      setMembers(members.map(m => m.id === editingMember.id ? {
+        ...m,
+        orixa: newReligiousName || '-',
+        role: newRole || 'Membro'
+      } : m));
       setEditingMember(null);
     } catch (err) {
-      console.error('Error updating orixa:', err);
-      alert('Erro ao atualizar Orixá.');
+      console.error('Error updating member:', err);
+      alert('Erro ao atualizar dados do membro.');
     } finally {
       setSavingOrixa(false);
     }
@@ -293,6 +303,25 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ onLogout }) => {
                     className="w-full rounded-xl border-gray-200 dark:border-border-dark p-3 text-sm dark:text-white dark:bg-[#1A2C22] focus:ring-primary focus:border-primary"
                     placeholder="Ex: Ogum Beira Mar"
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-[#9db9a6] mb-2">
+                    Cargo / Função
+                  </label>
+                  <select
+                    value={newRole}
+                    onChange={(e) => setNewRole(e.target.value)}
+                    className="w-full rounded-xl border-gray-200 dark:border-border-dark p-3 text-sm dark:text-white dark:bg-[#1A2C22] focus:ring-primary focus:border-primary"
+                  >
+                    <option value="Membro">Membro</option>
+                    <option value="Ogã">Ogã</option>
+                    <option value="Ekedji">Ekedji</option>
+                    <option value="Mãe Pequena">Mãe Pequena</option>
+                    <option value="Pai Pequeno">Pai Pequeno</option>
+                    <option value="Ialorixá">Ialorixá</option>
+                    <option value="Babalorixá">Babalorixá</option>
+                    <option value="Visitante">Visitante</option>
+                  </select>
                 </div>
                 <div className="flex gap-3 mt-6 pt-2">
                   <button
