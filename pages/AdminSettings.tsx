@@ -20,20 +20,17 @@ const AdminSettings: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             setLoading(true);
             const email = localStorage.getItem('userEmail');
             if (!email) {
-                // For admin, we might not have set userEmail in localStorage if they logged in via a different flow?
-                // Wait, logic in LoginPage sets userEmail for everyone.
-                // But if they are just "Admin Pai Antonio" hardcoded?
-                // Let's assume we want to edit the "Admin Wenn" profile we created.
-                // If localStorage is empty, let's fallback to 'wennsouza@gmail.com' for safety if userRole is admin.
-                // But better to warn.
+                // If no session email, force logout or show error
+                onLogout();
+                return;
             }
 
-            const targetEmail = email || 'wennsouza@gmail.com'; // Default to master admin for now if lost context
+            const targetEmail = email;
 
             const { data, error } = await supabase
                 .from('members')
                 .select('full_name, religious_name, avatar_url')
-                .eq('email', targetEmail) // Fetch by email
+                .eq('email', targetEmail)
                 .single();
 
             if (error) {
@@ -90,7 +87,8 @@ const AdminSettings: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         setMessage(null);
 
         try {
-            const email = localStorage.getItem('userEmail') || 'wennsouza@gmail.com';
+            const email = localStorage.getItem('userEmail');
+            if (!email) throw new Error("Sessão expirada. Faça login novamente.");
 
             const { error } = await supabase
                 .from('members')
