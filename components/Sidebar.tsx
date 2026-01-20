@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { IMAGES } from '../constants';
+import { supabase } from '../lib/supabase';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -11,6 +12,22 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ onLogout, isOpen = false, onClose }) => {
   const location = useLocation();
+  const [userProfile, setUserProfile] = useState<{ full_name: string, avatar_url: string | null } | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const email = localStorage.getItem('userEmail');
+      if (email) {
+        const { data } = await supabase
+          .from('members')
+          .select('full_name, avatar_url')
+          .eq('email', email)
+          .single();
+        if (data) setUserProfile(data);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -76,11 +93,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isOpen = false, onClose }) 
             className="flex items-center gap-3 p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 cursor-pointer transition-all group"
           >
             <div
-              className="h-10 w-10 rounded-full bg-cover bg-center border-2 border-accent-gold"
-              style={{ backgroundImage: `url('${IMAGES.PAI_ANTONIO}')` }}
+              className="h-10 w-10 rounded-full bg-cover bg-center border-2 border-accent-gold bg-gray-200"
+              style={{ backgroundImage: `url('${userProfile?.avatar_url || IMAGES.PAI_ANTONIO}')` }}
             ></div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900 dark:text-white truncate">Pai Antonio</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                {userProfile?.full_name || 'Usuário'}
+              </p>
               <p className="text-xs text-gray-500 dark:text-[#9db9a6] truncate group-hover:text-red-500">Sair do sistema</p>
             </div>
             <span className="material-symbols-outlined text-gray-400 group-hover:text-red-500 text-[20px]">logout</span>
