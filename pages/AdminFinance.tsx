@@ -8,39 +8,38 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
 
+    // Filters
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
     // Form State
+    const [editingExpense, setEditingExpense] = useState<any | null>(null);
     const [newExpense, setNewExpense] = useState({ description: '', amount: '', category: '', date: new Date().toISOString().split('T')[0] });
 
     useEffect(() => {
         fetchFinanceData();
-    }, []);
+    }, [selectedMonth, selectedYear]);
 
     const fetchFinanceData = async () => {
         setLoading(true);
         try {
-            const currentMonth = new Date().getMonth() + 1;
-            const currentYear = new Date().getFullYear();
-
-            // 1. Fetch Income (Sum of Member Payments for ANY month paid IN THIS MONTH? 
-            // Or sum of payments referentes to this month? 
-            // Usually cash flow is "paid in this month", but simpler is "payments referencing this month". 
-            // Let's stick to "competence" (referencing this month) as per the common requirement "somará os valores... do mês atual")
-
-            // Correction: "Values of monthly fees of the current month when they are paid"
+            // 1. Fetch Income (Payments referencing this month/year)
             const { data: incomeData, error: incomeError } = await supabase
                 .from('member_payments')
                 .select('amount')
-                .eq('month', currentMonth) // Referencing current month
-                .eq('year', currentYear)
+                .eq('month', selectedMonth)
+                .eq('year', selectedYear)
                 .eq('status', 'paid');
 
             if (incomeError) throw incomeError;
             const income = incomeData?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
 
-            // 2. Fetch Expenses for current month
-            // We need a date filter.
-            const startOfMonth = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
-            const endOfMonth = `${currentYear}-${String(currentMonth).padStart(2, '0')}-31`; // Loose end date
+            // 2. Fetch Expenses for selected month/year filter
+            const startOfMonth = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
+            // Calculate last day correctly or use a safe upper bound
+            // Using logic to get last day of month:
+            const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+            const endOfMonth = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${lastDay}`;
 
             const { data: expensesData, error: expensesError } = await supabase
                 .from('financial_expenses')
@@ -67,26 +66,72 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         }
     };
 
-    const handleAddExpense = async (e: React.FormEvent) => {
+    const handleSaveExpense = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const { error } = await supabase.from('financial_expenses').insert({
-                description: newExpense.description,
-                amount: parseFloat(newExpense.amount),
-                category: newExpense.category,
-                expense_date: newExpense.date
-            });
+            if (editingExpense) {
+                // Update
+                const { error } = await supabase
+                    .from('financial_expenses')
+                    .update({
+                        description: newExpense.description,
+                        amount: parseFloat(newExpense.amount),
+                        category: newExpense.category,
+                        expense_date: newExpense.date
+                    })
+                    .eq('id', editingExpense.id);
 
-            if (error) throw error;
+                if (error) throw error;
+            } else {
+                // Create
+                const { error } = await supabase.from('financial_expenses').insert({
+                    description: newExpense.description,
+                    amount: parseFloat(newExpense.amount),
+                    category: newExpense.category,
+                    expense_date: newExpense.date
+                });
+
+                if (error) throw error;
+            }
 
             setShowModal(false);
+            setEditingExpense(null);
             setNewExpense({ description: '', amount: '', category: '', date: new Date().toISOString().split('T')[0] });
-            fetchFinanceData(); // Refresh
+            fetchFinanceData();
 
         } catch (error) {
-            console.error('Error adding expense:', error);
-            alert('Erro ao adicionar despesa.');
+            console.error('Error saving expense:', error);
+            alert('Erro ao salvar despesa.');
         }
+    };
+
+    const handleEditClick = (expense: any) => {
+        setEditingExpense(expense);
+        setNewExpense({
+            description: expense.description,
+            amount: expense.amount.toString(),
+            category: expense.category,
+            date: expense.expense_date
+        });
+        setShowModal(true);
+    };
+
+    const handleDeleteClick = async (id: string) => {
+        if (!window.confirm('Tem certeza que deseja excluir esta despesa?')) return;
+        try {
+            const { error } = await supabase.from('financial_expenses').delete().eq('id', id);
+            if (error) throw error;
+            fetchFinanceData();
+        } catch (error) {
+            console.error('Error deleting expense:', error);
+            alert('Erro ao excluir despesa.');
+        }
+    };
+
+    const openNewExpenseModal = () => {
+        setEditingExpense(null);
+        setNewExpense({ description: '', amount: '', category: '', date: new Date().toISOString().split('T')[0] });
+        setShowModal(true);
     };
 
     return (
@@ -95,12 +140,37 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
             <main className="flex-1 ml-0 md:ml-72 flex flex-col h-screen overflow-hidden relative">
                 <header className="h-20 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-[#28392e] flex items-center justify-between px-6 sticky top-0 z-10">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-white">Financeiro</h2>
+                    <div className="flex items-center gap-4">
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-white mr-4">Financeiro</h2>
+
+                        {/* Filters */}
+                        <div className="flex items-center gap-2">
+                            <select
+                                value={selectedMonth}
+                                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                                className="bg-gray-100 dark:bg-[#1A2C22] border-none rounded-lg text-sm font-bold text-gray-700 dark:text-gray-300 py-2 pl-3 pr-8 focus:ring-2 focus:ring-primary"
+                            >
+                                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                    <option key={m} value={m}>{new Date(0, m - 1).toLocaleString('pt-BR', { month: 'long' })}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={selectedYear}
+                                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                                className="bg-gray-100 dark:bg-[#1A2C22] border-none rounded-lg text-sm font-bold text-gray-700 dark:text-gray-300 py-2 pl-3 pr-8 focus:ring-2 focus:ring-primary"
+                            >
+                                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
+                                    <option key={y} value={y}>{y}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
                     <button
-                        onClick={() => setShowModal(true)}
-                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-red-500/20"
+                        onClick={openNewExpenseModal}
+                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-red-500/20 transition-all"
                     >
-                        <span className="material-symbols-outlined text-[18px]">remove</span>
+                        <span className="material-symbols-outlined text-[18px]">add</span>
                         Nova Saída
                     </button>
                 </header>
@@ -112,7 +182,7 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="bg-white dark:bg-[#1A2C22] p-6 rounded-3xl border border-gray-100 dark:border-[#28392e] relative overflow-hidden group">
                                 <div className="relative z-10">
-                                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">Entradas (Mês)</p>
+                                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">Entradas ({selectedMonth}/{selectedYear})</p>
                                     <h3 className="text-3xl font-black text-green-500">
                                         R$ {balance.income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                     </h3>
@@ -124,7 +194,7 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
                             <div className="bg-white dark:bg-[#1A2C22] p-6 rounded-3xl border border-gray-100 dark:border-[#28392e] relative overflow-hidden group">
                                 <div className="relative z-10">
-                                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">Saídas (Mês)</p>
+                                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">Saídas ({selectedMonth}/{selectedYear})</p>
                                     <h3 className="text-3xl font-black text-red-500">
                                         R$ {balance.expenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                     </h3>
@@ -150,7 +220,7 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                         {/* Recent Expenses List */}
                         <div className="bg-white dark:bg-[#1A2C22] rounded-3xl border border-gray-100 dark:border-[#28392e] overflow-hidden">
                             <div className="p-6 border-b border-gray-100 dark:border-[#28392e]">
-                                <h3 className="font-bold text-lg text-gray-900 dark:text-white">Últimas Saídas</h3>
+                                <h3 className="font-bold text-lg text-gray-900 dark:text-white">Saídas do Período</h3>
                             </div>
                             <table className="w-full text-left">
                                 <thead className="bg-gray-50 dark:bg-[#111813]">
@@ -159,21 +229,40 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                         <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-[#5c7a67]">Categoria</th>
                                         <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-[#5c7a67]">Data</th>
                                         <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-[#5c7a67] text-right">Valor</th>
+                                        <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-[#5c7a67] text-right">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-[#28392e]">
                                     {expenses.length === 0 ? (
                                         <tr>
-                                            <td colSpan={4} className="p-8 text-center text-gray-500">Nenhuma despesa registrada neste mês.</td>
+                                            <td colSpan={5} className="p-8 text-center text-gray-500">Nenhuma despesa registrada neste mês.</td>
                                         </tr>
                                     ) : (
                                         expenses.map(expense => (
-                                            <tr key={expense.id} className="hover:bg-gray-50 dark:hover:bg-[#20362a] transition-colors">
+                                            <tr key={expense.id} className="hover:bg-gray-50 dark:hover:bg-[#20362a] transition-colors group">
                                                 <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{expense.description}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-500">{expense.category || '-'}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-500">{new Date(expense.expense_date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
                                                 <td className="px-6 py-4 text-right font-bold text-red-500">
                                                     - R$ {expense.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            onClick={() => handleEditClick(expense)}
+                                                            className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 rounded-lg transition-colors"
+                                                            title="Editar"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[18px]">edit</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteClick(expense.id)}
+                                                            className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
+                                                            title="Excluir"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))
@@ -189,8 +278,10 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 {showModal && (
                     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                         <div className="bg-white dark:bg-surface-dark rounded-3xl p-6 w-full max-w-md shadow-2xl">
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Nova Despesa</h3>
-                            <form onSubmit={handleAddExpense} className="space-y-4">
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                                {editingExpense ? 'Editar Despesa' : 'Nova Despesa'}
+                            </h3>
+                            <form onSubmit={handleSaveExpense} className="space-y-4">
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Descrição</label>
                                     <input
