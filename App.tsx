@@ -57,8 +57,8 @@ const App: React.FC = () => {
           element={
             isAuthenticated && (userRole === 'member' || userRole === 'admin') ? (
               <Routes>
-                <Route path="/" element={<MemberDashboard onLogout={handleLogout} />} />
-                <Route path="*" element={<MemberDashboard onLogout={handleLogout} />} />
+                <Route path="/" element={<MemberDashboard onLogout={handleLogout} userRole={userRole} />} />
+                <Route path="*" element={<MemberDashboard onLogout={handleLogout} userRole={userRole} />} />
               </Routes>
             ) : (
               <Navigate to="/login" replace />

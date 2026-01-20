@@ -74,6 +74,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       }
 
       // Success
+      localStorage.setItem('userEmail', email.toLowerCase().trim()); // Persist email for session context
       onLogin('member');
 
     } catch (err: any) {

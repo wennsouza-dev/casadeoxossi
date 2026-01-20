@@ -5,9 +5,10 @@ interface MemberSidebarProps {
     onLogout: () => void;
     isOpen?: boolean;
     onClose?: () => void;
+    userRole?: 'admin' | 'member' | null;
 }
 
-const MemberSidebar: React.FC<MemberSidebarProps> = ({ onLogout, isOpen = false, onClose }) => {
+const MemberSidebar: React.FC<MemberSidebarProps> = ({ onLogout, isOpen = false, onClose, userRole }) => {
     const location = useLocation();
 
     const isActive = (path: string) => {
@@ -55,6 +56,20 @@ const MemberSidebar: React.FC<MemberSidebarProps> = ({ onLogout, isOpen = false,
                         <span className="material-symbols-outlined text-[20px]">checklist</span>
                         <span className="text-sm font-bold">Checklist</span>
                     </Link>
+
+                    <div className="my-2 border-t border-gray-100 dark:border-border-dark/50"></div>
+
+                    <Link onClick={onClose} to="/filhos/settings" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${isActive('/filhos/settings')}`}>
+                        <span className="material-symbols-outlined text-[20px]">person_edit</span>
+                        <span className="text-sm font-bold">Meus Dados</span>
+                    </Link>
+
+                    {userRole === 'admin' && (
+                        <Link onClick={onClose} to="/admin" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all group text-amber-600 hover:bg-amber-50 dark:text-amber-500 dark:hover:bg-amber-900/10 mt-2`}>
+                            <span className="material-symbols-outlined text-[20px]">admin_panel_settings</span>
+                            <span className="text-sm font-bold">Voltar ao Admin</span>
+                        </Link>
+                    )}
                 </nav>
 
                 <div className="mt-auto">

@@ -200,9 +200,13 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout }) => {
                         <div className="absolute bottom-4 right-6 text-[10px] font-bold uppercase tracking-[0.2em] opacity-60 hidden md:block">Respeito & Tradição</div>
                     </div>
 
-                </div>
-            </main>
+                    {/* End of Dashboard Widgets */}
+                </>
+                    )}
+
         </div>
+            </main >
+        </div >
     );
 };
 
