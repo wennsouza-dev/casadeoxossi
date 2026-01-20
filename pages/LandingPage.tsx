@@ -1,9 +1,26 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { IMAGES } from '../constants';
+import { supabase } from '../lib/supabase';
 
 const LandingPage: React.FC = () => {
+  const [publicEvents, setPublicEvents] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchPublicEvents = async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const { data } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('is_public', true)
+        .gte('event_date', today)
+        .order('event_date', { ascending: true })
+        .limit(4);
+
+      if (data) setPublicEvents(data);
+    };
+    fetchPublicEvents();
+  }, []);
   return (
     <div className="flex flex-col min-h-screen">
       <header className="fixed top-0 z-50 w-full border-b border-white/5 bg-white/10 dark:bg-background-dark/80 backdrop-blur-md px-6 md:px-20 py-4">
@@ -18,7 +35,7 @@ const LandingPage: React.FC = () => {
             <a href="#giras" className="text-sm font-bold text-white hover:text-primary transition-colors">Giras</a>
             <a href="#contato" className="text-sm font-bold text-white hover:text-primary transition-colors">Localização</a>
           </nav>
-          <Link 
+          <Link
             to="/login"
             className="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-primary/20"
           >
@@ -28,7 +45,7 @@ const LandingPage: React.FC = () => {
       </header>
 
       <main className="flex-1">
-        <section 
+        <section
           id="inicio"
           className="relative h-[80vh] min-h-[600px] flex items-center justify-center text-center p-8 bg-cover bg-center"
           style={{ backgroundImage: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url('${IMAGES.HERO}')` }}
@@ -53,6 +70,46 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
         </section>
+
+        {/* Dynamic Agenda Section */}
+        {publicEvents.length > 0 && (
+          <section id="giras" className="py-24 bg-[#0B1610] relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+            <div className="max-w-[1200px] mx-auto px-6 relative z-10">
+              <div className="text-center max-w-2xl mx-auto mb-16">
+                <span className="text-primary text-[10px] font-bold uppercase tracking-[0.3em]">Agenda Aberta</span>
+                <h2 className="text-4xl font-serif font-black text-white leading-tight italic mt-2 mb-4">Próximas Giras e Eventos</h2>
+                <p className="text-[#9db9a6]">Participe de nossos encontros abertos à comunidade. Todos são bem-vindos para receber o axé.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {publicEvents.map(event => (
+                  <div key={event.id} className="bg-white/5 border border-white/10 rounded-3xl p-6 hover:bg-white/10 transition-colors group">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="size-10 rounded-full bg-primary flex items-center justify-center text-white">
+                        <span className="material-symbols-outlined text-lg">calendar_month</span>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#9db9a6]">
+                          {new Date(event.event_date).toLocaleDateString('pt-BR', { weekday: 'long' })}
+                        </p>
+                        <p className="text-white font-bold text-lg leading-none">
+                          {new Date(event.event_date).getDate()} {new Date(event.event_date).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}
+                        </p>
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">{event.title}</h3>
+                    <p className="text-sm text-[#9db9a6] line-clamp-3">{event.description || 'Evento aberto ao público.'}</p>
+                    <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-xs font-bold text-primary">
+                      <span className="material-symbols-outlined text-sm">schedule</span>
+                      {event.event_time.slice(0, 5)}h
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         <section id="sobre" className="py-24 bg-white dark:bg-background-dark">
           <div className="max-w-[1200px] mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
