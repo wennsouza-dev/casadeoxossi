@@ -69,9 +69,9 @@ const MemberSidebar: React.FC<MemberSidebarProps> = ({ onLogout, isOpen = false,
                         <span className="material-symbols-outlined text-[20px]">volunteer_activism</span>
                         <span className="text-sm font-bold">Doações</span>
                     </Link>
-                    <Link onClick={onClose} to="/filhos/checklist" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${isActive('/filhos/checklist')}`}>
-                        <span className="material-symbols-outlined text-[20px]">checklist</span>
-                        <span className="text-sm font-bold">Checklist</span>
+                    <Link onClick={onClose} to="/filhos/mensalidades" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${isActive('/filhos/mensalidades')}`}>
+                        <span className="material-symbols-outlined text-[20px]">payments</span>
+                        <span className="text-sm font-bold">Mensalidades</span>
                     </Link>
 
                     <div className="my-2 border-t border-gray-100 dark:border-border-dark/50"></div>

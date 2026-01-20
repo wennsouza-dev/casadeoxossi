@@ -11,6 +11,7 @@ import AdminAgenda from './pages/AdminAgenda';
 import AdminSettings from './pages/AdminSettings';
 import AdminPayments from './pages/AdminPayments';
 import MemberFinancial from './pages/MemberFinancial';
+import MemberDonations from './pages/MemberDonations';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -71,8 +72,9 @@ const App: React.FC = () => {
                 <Route path="/" element={<MemberDashboard onLogout={handleLogout} userRole={userRole} />} />
                 <Route path="/agenda" element={<MemberDashboard onLogout={handleLogout} userRole={userRole} />} />
                 <Route path="/financial" element={<MemberFinancial />} />
+                <Route path="/mensalidades" element={<MemberFinancial />} />
                 <Route path="/checklist" element={<MemberDashboard onLogout={handleLogout} userRole={userRole} />} />
-                <Route path="/doacoes" element={<MemberFinancial />} />
+                <Route path="/doacoes" element={<MemberDonations />} />
               </Routes>
             ) : (
               <Navigate to="/login" replace />
