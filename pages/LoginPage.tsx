@@ -33,6 +33,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           .single();
 
         if (adminData && !adminError) {
+          localStorage.setItem('userEmail', email.toLowerCase().trim());
           onLogin('admin');
           return;
         }

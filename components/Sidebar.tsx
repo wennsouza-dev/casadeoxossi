@@ -23,7 +23,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isOpen = false, onClose }) 
           .select('full_name, avatar_url')
           .eq('email', email)
           .single();
-        if (data) setUserProfile(data);
+        if (data) {
+          setUserProfile(data);
+        } else {
+          // Fallback for Admin
+          setUserProfile({ full_name: 'Administrador', avatar_url: null });
+        }
       }
     };
     fetchProfile();

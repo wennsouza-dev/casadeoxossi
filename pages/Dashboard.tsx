@@ -29,6 +29,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           .single();
         if (data && data.full_name) {
           setUserName(data.full_name.split(' ')[0]); // Display first name
+        } else {
+          // If email exists but not in members table, likely an Admin User
+          setUserName('Administrador');
         }
       }
 
