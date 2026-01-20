@@ -69,9 +69,10 @@ const App: React.FC = () => {
             isAuthenticated && (userRole === 'member' || userRole === 'admin') ? (
               <Routes>
                 <Route path="/" element={<MemberDashboard onLogout={handleLogout} userRole={userRole} />} />
-                <Route path="/agenda" element={<MemberAgenda />} />
+                <Route path="/agenda" element={<MemberDashboard onLogout={handleLogout} userRole={userRole} />} />
                 <Route path="/financial" element={<MemberFinancial />} />
-                <Route path="/checklist" element={<MemberChecklist />} />
+                <Route path="/checklist" element={<MemberDashboard onLogout={handleLogout} userRole={userRole} />} />
+                <Route path="/doacoes" element={<MemberFinancial />} />
               </Routes>
             ) : (
               <Navigate to="/login" replace />
