@@ -166,13 +166,22 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                         </div>
                     </div>
 
-                    <button
-                        onClick={openNewExpenseModal}
-                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-red-500/20 transition-all"
-                    >
-                        <span className="material-symbols-outlined text-[18px]">add</span>
-                        Nova Saída
-                    </button>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => openNewExpenseModal('income')}
+                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-green-500/20 transition-all"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">add</span>
+                            Nova Entrada
+                        </button>
+                        <button
+                            onClick={() => openNewExpenseModal('expense')}
+                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-red-500/20 transition-all"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">remove</span>
+                            Nova Saída
+                        </button>
+                    </div>
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-6 md:p-10">
@@ -235,16 +244,26 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                 <tbody className="divide-y divide-gray-100 dark:divide-[#28392e]">
                                     {expenses.length === 0 ? (
                                         <tr>
-                                            <td colSpan={5} className="p-8 text-center text-gray-500">Nenhuma despesa registrada neste mês.</td>
+                                            <td colSpan={5} className="p-8 text-center text-gray-500">Nenhum lançamento registrado neste mês.</td>
                                         </tr>
                                     ) : (
                                         expenses.map(expense => (
                                             <tr key={expense.id} className="hover:bg-gray-50 dark:hover:bg-[#20362a] transition-colors group">
-                                                <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{expense.description}</td>
+                                                <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`material-symbols-outlined text-[16px] ${expense.type === 'income' ? 'text-green-500' : 'text-red-500'
+                                                            }`}>
+                                                            {expense.type === 'income' ? 'arrow_upward' : 'arrow_downward'}
+                                                        </span>
+                                                        {expense.description}
+                                                    </div>
+                                                </td>
                                                 <td className="px-6 py-4 text-sm text-gray-500">{expense.category || '-'}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-500">{new Date(expense.expense_date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
-                                                <td className="px-6 py-4 text-right font-bold text-red-500">
-                                                    - R$ {expense.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                <td className={`px-6 py-4 text-right font-bold ${expense.type === 'income' ? 'text-green-500' : 'text-red-500'
+                                                    }`}>
+                                                    {expense.type === 'income' ? '+ ' : '- '}
+                                                    R$ {expense.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -279,7 +298,7 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                         <div className="bg-white dark:bg-surface-dark rounded-3xl p-6 w-full max-w-md shadow-2xl">
                             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                                {editingExpense ? 'Editar Despesa' : 'Nova Despesa'}
+                                {editingExpense ? 'Editar Lançamento' : (newExpense.type === 'income' ? 'Nova Entrada' : 'Nova Saída')}
                             </h3>
                             <form onSubmit={handleSaveExpense} className="space-y-4">
                                 <div>
