@@ -1,0 +1,7 @@
+{
+  "name": "Casa de Oxóssi - Sistema de Gestão",
+  "description": "Uma plataforma completa para gestão de membros, finanças e agenda de giras para casas de Umbanda, com design inspirado na natureza e espiritualidade.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
