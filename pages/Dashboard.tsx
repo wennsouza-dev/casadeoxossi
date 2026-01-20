@@ -14,9 +14,29 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [loading, setLoading] = React.useState(true);
 
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [userName, setUserName] = React.useState('Usuário');
+  const [currentDate, setCurrentDate] = React.useState('');
 
   React.useEffect(() => {
-    const fetchStats = async () => {
+    const fetchStatsAndProfile = async () => {
+      // 1. Fetch User Profile
+      const email = localStorage.getItem('userEmail');
+      if (email) {
+        const { data } = await supabase
+          .from('members')
+          .select('full_name')
+          .eq('email', email)
+          .single();
+        if (data && data.full_name) {
+          setUserName(data.full_name.split(' ')[0]); // Display first name
+        }
+      }
+
+      // 2. Set Date
+      const dateOptions: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' };
+      setCurrentDate(new Date().toLocaleDateString('pt-BR', dateOptions));
+
+      // 3. Fetch Stats
       try {
         const { count, error } = await supabase
           .from('members')
@@ -31,7 +51,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         setLoading(false);
       }
     };
-    fetchStats();
+    fetchStatsAndProfile();
   }, []);
 
   return (
@@ -73,12 +93,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           <div className="max-w-7xl mx-auto space-y-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
               <div>
-                <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">Bom dia, Pai Antonio</h2>
+                <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">Bom dia, {userName}</h2>
                 <p className="text-gray-500 dark:text-[#9db9a6] mt-2 text-lg">Que a sabedoria de Oxóssi guie suas decisões hoje.</p>
               </div>
               <div className="flex items-center gap-2 bg-accent-gold/10 px-4 py-2 rounded-lg border border-accent-gold/20">
                 <span className="material-symbols-outlined text-accent-gold">calendar_month</span>
-                <span className="text-accent-gold font-bold text-sm">20 de Janeiro, 2026</span>
+                <span className="text-accent-gold font-bold text-sm capitalize">{currentDate}</span>
               </div>
             </div>
 
