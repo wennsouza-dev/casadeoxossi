@@ -6,12 +6,21 @@ interface MemberDashboardProps {
 }
 
 const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout }) => {
+    const [sidebarOpen, setSidebarOpen] = React.useState(false);
+
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex overflow-hidden font-display">
-            <MemberSidebar onLogout={onLogout} />
+            <MemberSidebar onLogout={onLogout} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-            <main className="flex-1 ml-0 md:ml-72 flex flex-col h-screen overflow-y-auto p-6 md:p-10">
-                <div className="max-w-7xl mx-auto space-y-8 w-full">
+            <main className="flex-1 ml-0 md:ml-72 flex flex-col h-screen overflow-y-auto p-6 md:p-10 relative">
+                <button
+                    onClick={() => setSidebarOpen(true)}
+                    className="md:hidden absolute top-6 left-6 p-2 bg-white dark:bg-surface-dark rounded-lg shadow-sm text-gray-500 dark:text-white z-10"
+                >
+                    <span className="material-symbols-outlined">menu</span>
+                </button>
+
+                <div className="max-w-7xl mx-auto space-y-8 w-full mt-8 md:mt-0">
 
                     {/* Header Section */}
                     <div>

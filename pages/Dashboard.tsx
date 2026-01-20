@@ -13,6 +13,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [memberCount, setMemberCount] = React.useState<number>(0);
   const [loading, setLoading] = React.useState(true);
 
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+
   React.useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -34,11 +36,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
   return (
     <div className="bg-background-light dark:bg-background-dark min-h-screen flex overflow-hidden">
-      <Sidebar onLogout={onLogout} />
+      <Sidebar onLogout={onLogout} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <main className="flex-1 ml-0 md:ml-72 flex flex-col h-screen overflow-hidden relative">
         <header className="h-20 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-[#28392e] flex items-center justify-between px-6 sticky top-0 z-10">
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg dark:text-white dark:hover:bg-white/10"
+            >
+              <span className="material-symbols-outlined">menu</span>
+            </button>
             <div className="relative w-full max-w-md hidden sm:block">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-[#5c7a67]">
                 <span className="material-symbols-outlined">search</span>
