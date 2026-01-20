@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
@@ -27,16 +26,47 @@ const App: React.FC = () => {
         <Route path="/" element={<LandingPage />} />
         <Route
           path="/login"
-          element={isAuthenticated ? <Navigate to="/admin" /> : <LoginPage onLogin={handleLogin} />}
+          element={
+            isAuthenticated ? (
+              <Navigate to={userRole === 'member' ? "/filhos" : "/admin"} replace />
+            ) : (
+              <LoginPage onLogin={handleLogin} />
+            )
+          }
         />
+
+        {/* Admin Routes */}
         <Route
-          path="/admin"
-          element={isAuthenticated ? <Dashboard onLogout={handleLogout} /> : <Navigate to="/login" />}
+          path="/admin/*"
+          element={
+            isAuthenticated && userRole === 'admin' ? (
+              <Routes>
+                <Route path="/" element={<Dashboard onLogout={handleLogout} />} />
+                <Route path="/members" element={<MemberManagement onLogout={handleLogout} />} />
+                <Route path="*" element={<Dashboard onLogout={handleLogout} />} />
+              </Routes>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
         />
+
+        {/* Member Routes */}
         <Route
-          path="/admin/members"
-          element={isAuthenticated ? <MemberManagement onLogout={handleLogout} /> : <Navigate to="/login" />}
+          path="/filhos/*"
+          element={
+            isAuthenticated && userRole === 'member' ? (
+              <Routes>
+                <Route path="/" element={<MemberDashboard onLogout={handleLogout} />} />
+                <Route path="*" element={<MemberDashboard onLogout={handleLogout} />} />
+              </Routes>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
         />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

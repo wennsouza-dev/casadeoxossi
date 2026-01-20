@@ -22,6 +22,7 @@ export interface Member {
   status: PaymentStatus;
   active: boolean;
   avatarUrl?: string;
+  email?: string;
 }
 
 export interface GiraEvent {
