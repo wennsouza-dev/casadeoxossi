@@ -9,6 +9,8 @@ import AdminPros from './pages/AdminPros';
 import AdminFinance from './pages/AdminFinance';
 import AdminAgenda from './pages/AdminAgenda';
 import AdminSettings from './pages/AdminSettings';
+import AdminPayments from './pages/AdminPayments';
+import MemberFinancial from './pages/MemberFinancial';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -50,6 +52,7 @@ const App: React.FC = () => {
                 <Route path="/pros" element={<AdminPros onLogout={handleLogout} />} />
                 <Route path="/finance" element={<AdminFinance onLogout={handleLogout} />} />
                 <Route path="/agenda" element={<AdminAgenda onLogout={handleLogout} />} />
+                <Route path="/payments" element={<AdminPayments onLogout={handleLogout} />} />
                 <Route path="/settings" element={<AdminSettings onLogout={handleLogout} />} />
                 <Route path="*" element={<Dashboard onLogout={handleLogout} />} />
               </Routes>
@@ -66,7 +69,9 @@ const App: React.FC = () => {
             isAuthenticated && (userRole === 'member' || userRole === 'admin') ? (
               <Routes>
                 <Route path="/" element={<MemberDashboard onLogout={handleLogout} userRole={userRole} />} />
-                <Route path="*" element={<MemberDashboard onLogout={handleLogout} userRole={userRole} />} />
+                <Route path="/agenda" element={<MemberAgenda />} />
+                <Route path="/financial" element={<MemberFinancial />} />
+                <Route path="/checklist" element={<MemberChecklist />} />
               </Routes>
             ) : (
               <Navigate to="/login" replace />

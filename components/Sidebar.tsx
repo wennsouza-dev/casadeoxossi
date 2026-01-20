@@ -73,6 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isOpen = false, onClose }) 
           <p className="px-4 text-[10px] font-bold text-gray-400 dark:text-[#5c7a67] uppercase tracking-widest mb-2">Menu Principal</p>
           <NavItem to="/admin" icon="dashboard" label="Visão Geral" />
           <NavItem to="/admin/finance" icon="account_balance_wallet" label="Financeiro" />
+          <NavItem to="/admin/payments" icon="payments" label="Mensalidades" />
           <NavItem to="/admin/members" icon="groups" label="Filhos da Casa" />
           <NavItem to="/admin/agenda" icon="event" label="Agenda" />
 
