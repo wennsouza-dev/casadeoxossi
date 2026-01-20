@@ -64,6 +64,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isOpen = false, onClose }) 
           <p className="px-4 text-[10px] font-bold text-gray-400 dark:text-[#5c7a67] uppercase tracking-widest mb-2">Administração</p>
           <NavItem to="/admin/pros" icon="handshake" label="Profissionais" />
           <NavItem to="/admin/settings" icon="settings" label="Configurações" />
+
+          <div className="my-4 border-t border-gray-100 dark:border-[#28392e]"></div>
+          <p className="px-4 text-[10px] font-bold text-gray-400 dark:text-[#5c7a67] uppercase tracking-widest mb-2">Acesso</p>
+          <NavItem to="/filhos" icon="visibility" label="Ver como Filho" />
         </div>
 
         <div className="p-4 border-t border-gray-100 dark:border-[#28392e]">

@@ -55,7 +55,7 @@ const App: React.FC = () => {
         <Route
           path="/filhos/*"
           element={
-            isAuthenticated && userRole === 'member' ? (
+            isAuthenticated && (userRole === 'member' || userRole === 'admin') ? (
               <Routes>
                 <Route path="/" element={<MemberDashboard onLogout={handleLogout} />} />
                 <Route path="*" element={<MemberDashboard onLogout={handleLogout} />} />
