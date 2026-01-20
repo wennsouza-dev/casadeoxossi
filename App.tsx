@@ -5,6 +5,8 @@ import MemberDashboard from './pages/MemberDashboard';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import MemberManagement from './pages/MemberManagement';
+import AdminPros from './pages/AdminPros';
+import AdminFinance from './pages/AdminFinance';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -43,6 +45,8 @@ const App: React.FC = () => {
               <Routes>
                 <Route path="/" element={<Dashboard onLogout={handleLogout} />} />
                 <Route path="/members" element={<MemberManagement onLogout={handleLogout} />} />
+                <Route path="/pros" element={<AdminPros onLogout={handleLogout} />} />
+                <Route path="/finance" element={<AdminFinance onLogout={handleLogout} />} />
                 <Route path="*" element={<Dashboard onLogout={handleLogout} />} />
               </Routes>
             ) : (
