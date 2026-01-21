@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import MemberSidebar from '../components/MemberSidebar';
 import MemberSettings from './MemberSettings';
 import { supabase } from '../lib/supabase';
@@ -14,6 +14,7 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
     const location = useLocation();
     const isSettingsPage = location.pathname.includes('/settings');
     const [events, setEvents] = useState<any[]>([]);
+    const [donationItems, setDonationItems] = useState<any[]>([]);
 
     useEffect(() => {
         const fetchEvents = async () => {
@@ -26,7 +27,21 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                 .limit(3);
             if (data) setEvents(data);
         };
+
+        const fetchDonations = async () => {
+            const { data } = await supabase
+                .from('donation_items')
+                .select(`
+                    *,
+                    pledges:donation_pledges (quantity)
+                `)
+                .order('created_at', { ascending: false })
+                .limit(3);
+            if (data) setDonationItems(data);
+        };
+
         fetchEvents();
+        fetchDonations();
     }, []);
 
     return (
@@ -111,41 +126,59 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
 
                                 {/* Pedidos de Doações */}
                                 <div className="bg-white dark:bg-surface-dark rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-border-dark flex flex-col">
-                                    <div className="flex items-center gap-2 mb-6">
-                                        <span className="material-symbols-outlined text-primary">volunteer_activism</span>
-                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white font-serif">Pedidos de Doações</h3>
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-primary">volunteer_activism</span>
+                                            <h3 className="text-xl font-bold text-gray-900 dark:text-white font-serif">Pedidos de Doações</h3>
+                                        </div>
+                                        <Link to="/filhos/doacoes" className="text-primary hover:underline text-xs font-bold uppercase tracking-wider">Ver tudo</Link>
                                     </div>
 
                                     <div className="space-y-4 flex-1">
-                                        <div className="bg-[#FFF8E1] dark:bg-amber-900/20 p-5 rounded-2xl border border-[#FFE082] dark:border-amber-700/30 relative">
-                                            <span className="absolute top-4 right-4 text-amber-500 font-bold">!</span>
-                                            <span className="bg-[#FFE082] text-amber-900 px-2 py-0.5 rounded text-[10px] font-bold uppercase mb-2 inline-block">Urgente</span>
-                                            <h4 className="font-bold text-gray-900 dark:text-white mb-1">Velas Brancas (7 dias)</h4>
-                                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Estamos com estoque baixo para a próxima gira de Caboclo.</p>
-                                            <button className="w-full bg-[#D4A017] hover:bg-[#B38600] text-white py-2 rounded-xl text-sm font-bold transition-colors">
-                                                Vou levar
-                                            </button>
-                                        </div>
+                                        {donationItems.length === 0 ? (
+                                            <p className="text-sm text-gray-500 text-center py-4">Nenhum pedido de doação ativo no momento.</p>
+                                        ) : (
+                                            donationItems.map((item, index) => {
+                                                const total = item.pledges?.reduce((acc: number, p: any) => acc + p.quantity, 0) || 0;
+                                                const isFull = item.requested_quantity ? total >= item.requested_quantity : false;
 
-                                        <div className="border border-gray-100 dark:border-border-dark p-5 rounded-2xl relative">
-                                            <span className="absolute top-4 right-4 text-green-500 material-symbols-outlined text-sm">leaf</span>
-                                            <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase mb-2 inline-block">Necessário</span>
-                                            <h4 className="font-bold text-gray-900 dark:text-white mb-1">Erva Guiné Fresca</h4>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Para banhos e defumação de sexta-feira.</p>
-                                            <button className="w-full border border-primary text-primary hover:bg-primary/5 py-2 rounded-xl text-sm font-bold transition-colors">
-                                                Contribuir
-                                            </button>
-                                        </div>
+                                                // Skip if full (optional functionality, but usually dashboard shows active needs)
+                                                // For now, listing top 3 regardless of fullness, but showcasing status
 
-                                        <div className="border border-gray-100 dark:border-border-dark p-5 rounded-2xl relative">
-                                            <span className="absolute top-4 right-4 text-gray-400 material-symbols-outlined text-sm">settings</span>
-                                            <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase mb-2 inline-block">Opcional</span>
-                                            <h4 className="font-bold text-gray-900 dark:text-white mb-1">Incenso de Defumação</h4>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Qualquer aroma de limpeza espiritual.</p>
-                                            <button className="w-full border border-primary text-primary hover:bg-primary/5 py-2 rounded-xl text-sm font-bold transition-colors">
-                                                Contribuir
-                                            </button>
-                                        </div>
+                                                return (
+                                                    <div key={item.id} className={`${index === 0 ? 'bg-[#FFF8E1] dark:bg-amber-900/20 border-[#FFE082] dark:border-amber-700/30' : 'border-gray-100 dark:border-border-dark'} p-5 rounded-2xl border relative`}>
+                                                        {index === 0 && (
+                                                            <>
+                                                                <span className="absolute top-4 right-4 text-amber-500 font-bold">!</span>
+                                                                <span className="bg-[#FFE082] text-amber-900 px-2 py-0.5 rounded text-[10px] font-bold uppercase mb-2 inline-block">Destaque</span>
+                                                            </>
+                                                        )}
+
+                                                        <h4 className="font-bold text-gray-900 dark:text-white mb-1">{item.name}</h4>
+                                                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">{item.description || 'Sem descrição.'}</p>
+
+                                                        {item.requested_quantity && (
+                                                            <div className="mb-3">
+                                                                <div className="flex justify-between text-[10px] font-bold uppercase text-gray-400 mb-1">
+                                                                    <span>Meta: {item.requested_quantity} {item.unit}</span>
+                                                                    <span>{Math.round((total / item.requested_quantity) * 100)}%</span>
+                                                                </div>
+                                                                <div className="h-1.5 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
+                                                                    <div className="h-full bg-primary" style={{ width: `${Math.min((total / item.requested_quantity) * 100, 100)}%` }}></div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        <Link to="/filhos/doacoes" className={`w-full block text-center py-2 rounded-xl text-sm font-bold transition-colors ${index === 0
+                                                            ? 'bg-[#D4A017] hover:bg-[#B38600] text-white'
+                                                            : 'border border-primary text-primary hover:bg-primary/5'
+                                                            }`}>
+                                                            {isFull ? 'Ver Detalhes' : 'Contribuir'}
+                                                        </Link>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
                                     </div>
                                 </div>
 
