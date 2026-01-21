@@ -165,17 +165,21 @@ const LandingPage: React.FC = () => {
                 </div>
 
                 {settings.transport_image_url && (
-                  <div className="bg-white dark:bg-surface-dark p-6 rounded-3xl border border-gray-100 dark:border-white/10 shadow-sm">
+                  <div
+                    className="bg-white dark:bg-surface-dark p-6 rounded-3xl border border-gray-100 dark:border-white/10 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => setSettings(prev => prev ? { ...prev, _showTransportZoom: true } as any : null)}
+                  >
                     <h4 className="text-sm font-bold uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
                       <span className="material-symbols-outlined">directions_bus</span> Transporte Público
+                      <span className="text-[10px] bg-primary/10 text-primary px-2 py-1 rounded-full ml-auto">Clique para ampliar</span>
                     </h4>
                     <img src={settings.transport_image_url} alt="Horários de Ônibus" className="rounded-xl w-full border border-gray-100 dark:border-white/5" />
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <a
-                    href={settings.google_maps_iframe.match(/src="([^"]+)"/)?.[1] || "#"}
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(settings.address || '')}`}
                     target="_blank"
                     rel="noreferrer"
                     className="bg-white dark:bg-surface-dark p-4 rounded-2xl border border-gray-100 dark:border-white/10 flex flex-col items-center justify-center text-center gap-2 hover:border-primary/50 transition-colors group"
@@ -183,25 +187,26 @@ const LandingPage: React.FC = () => {
                     <span className="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">map</span>
                     <span className="font-bold text-gray-900 dark:text-white text-sm">Abrir no Maps</span>
                   </a>
-                  <a
-                    href="https://wa.me/55NUMERO"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="bg-white dark:bg-surface-dark p-4 rounded-2xl border border-gray-100 dark:border-white/10 flex flex-col items-center justify-center text-center gap-2 hover:border-green-500/50 transition-colors group"
-                  >
-                    <span className="material-symbols-outlined text-green-600 text-3xl group-hover:scale-110 transition-transform">chat</span>
-                    <span className="font-bold text-gray-900 dark:text-white text-sm">Dúvidas?</span>
-                  </a>
                 </div>
               </div>
 
               <div className="h-[500px] w-full bg-gray-200 dark:bg-surface-dark rounded-3xl overflow-hidden shadow-2xl border-4 border-white dark:border-white/5 relative">
-                {settings.google_maps_iframe ? (
+                {settings.google_maps_iframe && settings.google_maps_iframe.includes('<iframe') ? (
                   <div dangerouslySetInnerHTML={{ __html: settings.google_maps_iframe.replace('width="600"', 'width="100%"').replace('height="450"', 'height="100%"') }} className="w-full h-full" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400 flex-col gap-2">
-                    <span className="material-symbols-outlined text-4xl">map</span>
-                    <span>Mapa não configurado</span>
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-4 p-8 text-center bg-gray-100 dark:bg-white/5">
+                    <span className="material-symbols-outlined text-6xl text-primary/50">map</span>
+                    <div>
+                      <p className="font-bold text-gray-900 dark:text-white mb-2">Ver localização no mapa</p>
+                      <a
+                        href={settings.google_maps_iframe && !settings.google_maps_iframe.includes('<iframe') ? settings.google_maps_iframe : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(settings.address || '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary hover:underline text-sm"
+                      >
+                        Clique para abrir o Google Maps
+                      </a>
+                    </div>
                   </div>
                 )}
                 <div className="absolute top-4 right-4 bg-white dark:bg-black/80 backdrop-blur-md px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-2">
@@ -233,6 +238,27 @@ const LandingPage: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {/* Transport Image Zoom Modal */}
+      {(settings as any)?._showTransportZoom && settings?.transport_image_url && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setSettings(prev => prev ? { ...prev, _showTransportZoom: false } as any : null)}
+        >
+          <button
+            className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors"
+            onClick={() => setSettings(prev => prev ? { ...prev, _showTransportZoom: false } as any : null)}
+          >
+            <span className="material-symbols-outlined text-4xl">close</span>
+          </button>
+          <img
+            src={settings.transport_image_url}
+            alt="Horários de Ônibus Ampliado"
+            className="max-w-full max-h-[90vh] rounded-xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 };
