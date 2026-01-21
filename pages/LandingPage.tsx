@@ -3,24 +3,42 @@ import { Link } from 'react-router-dom';
 import { IMAGES } from '../constants';
 import { supabase } from '../lib/supabase';
 
+interface HouseSettings {
+  address: string;
+  google_maps_iframe: string;
+  transport_image_url: string | null;
+}
+
 const LandingPage: React.FC = () => {
   const [publicEvents, setPublicEvents] = useState<any[]>([]);
+  const [gallery, setGallery] = useState<any[]>([]);
+  const [settings, setSettings] = useState<HouseSettings | null>(null);
 
   useEffect(() => {
-    const fetchPublicEvents = async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const { data } = await supabase
-        .from('calendar_events')
-        .select('*')
-        .eq('is_public', true)
-        .gte('event_date', today)
-        .order('event_date', { ascending: true })
-        .limit(4);
-
-      if (data) setPublicEvents(data);
-    };
-    fetchPublicEvents();
+    fetchData();
   }, []);
+
+  const fetchData = async () => {
+    // Events
+    const today = new Date().toISOString().split('T')[0];
+    const { data: events } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('is_public', true)
+      .gte('event_date', today)
+      .order('event_date', { ascending: true })
+      .limit(4);
+    if (events) setPublicEvents(events);
+
+    // Settings
+    const { data: setts } = await supabase.from('app_settings').select('*').limit(1).single();
+    if (setts) setSettings(setts);
+
+    // Gallery
+    const { data: photos } = await supabase.from('gallery_photos').select('*').order('created_at', { ascending: false }).limit(30);
+    if (photos) setGallery(photos);
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <header className="fixed top-0 z-50 w-full border-b border-white/5 bg-white/10 dark:bg-background-dark/80 backdrop-blur-md px-6 md:px-20 py-4">
@@ -31,9 +49,9 @@ const LandingPage: React.FC = () => {
           </div>
           <nav className="hidden md:flex items-center gap-10">
             <a href="#inicio" className="text-sm font-bold text-white hover:text-primary transition-colors">Início</a>
-            <a href="#sobre" className="text-sm font-bold text-white hover:text-primary transition-colors">Sobre</a>
             <a href="#giras" className="text-sm font-bold text-white hover:text-primary transition-colors">Giras</a>
-            <a href="#contato" className="text-sm font-bold text-white hover:text-primary transition-colors">Localização</a>
+            <a href="#galeria" className="text-sm font-bold text-white hover:text-primary transition-colors">A Casa</a>
+            <a href="#localizacao" className="text-sm font-bold text-white hover:text-primary transition-colors">Localização</a>
           </nav>
           <Link
             to="/login"
@@ -64,10 +82,12 @@ const LandingPage: React.FC = () => {
               <a href="#giras" className="bg-primary hover:bg-primary-hover text-white h-14 px-10 flex items-center justify-center rounded-xl font-black text-base transition-all transform hover:scale-105 shadow-xl shadow-primary/20">
                 Próximas Giras
               </a>
-              <a href="#contato" className="bg-white/10 backdrop-blur-md text-white border border-white/20 h-14 px-10 flex items-center justify-center rounded-xl font-black text-base hover:bg-white/20 transition-all">
+              <a href="#localizacao" className="bg-white/10 backdrop-blur-md text-white border border-white/20 h-14 px-10 flex items-center justify-center rounded-xl font-black text-base hover:bg-white/20 transition-all">
                 Como Chegar
               </a>
             </div>
+
+            {/* Helper text for mini map if requested by user, but keeping the section below is better */}
           </div>
         </section>
 
@@ -111,31 +131,87 @@ const LandingPage: React.FC = () => {
           </section>
         )}
 
-        <section id="sobre" className="py-24 bg-white dark:bg-background-dark">
-          <div className="max-w-[1200px] mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
-            <div className="relative group rounded-3xl overflow-hidden shadow-2xl">
-              <img src={IMAGES.ALTAR} alt="Altar sagrado" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+        {/* Gallery Section */}
+        {gallery.length > 0 && (
+          <section id="galeria" className="py-24 bg-white dark:bg-background-dark">
+            <div className="max-w-[1200px] mx-auto px-6">
+              <div className="text-center max-w-2xl mx-auto mb-16">
+                <span className="text-primary text-[10px] font-bold uppercase tracking-[0.3em]">Nossa Casa</span>
+                <h2 className="text-4xl font-serif font-black text-gray-900 dark:text-white leading-tight italic mt-2 mb-4">Um Lugar de Paz</h2>
+                <p className="text-gray-500 dark:text-gray-400">Conheça um pouco do nosso espaço sagrado.</p>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {gallery.map((photo, index) => (
+                  <div key={photo.id} className={`rounded-xl overflow-hidden shadow-lg bg-gray-100 dark:bg-white/5 relative group ${index === 0 ? 'col-span-2 row-span-2' : ''}`}>
+                    <img src={photo.url} alt="Galeria" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-black/5 group-hover:bg-black/0 transition-colors"></div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="space-y-6">
-              <h3 className="text-primary text-[10px] font-bold uppercase tracking-[0.3em]">Nossa Missão</h3>
-              <h2 className="text-4xl font-serif font-black dark:text-white leading-tight italic">O Sagrado Axé de Oxóssi em cada atendimento.</h2>
-              <p className="text-gray-500 dark:text-[#9db9a6] text-lg leading-relaxed">
-                Nossa casa é um templo dedicado à prática da Umbanda, focada no auxílio espiritual, caridade e na manutenção das tradições ancestrais sob a regência de Pai Oxóssi.
-              </p>
-              <div className="grid grid-cols-2 gap-6 pt-4">
-                <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10">
-                  <span className="material-symbols-outlined text-primary mb-2">volunteer_activism</span>
-                  <p className="text-sm font-bold dark:text-white">Caridade Gratuita</p>
+          </section>
+        )}
+
+        {/* Location Section */}
+        {(settings?.google_maps_iframe || settings?.address) && (
+          <section id="localizacao" className="py-24 bg-gray-50 dark:bg-[#0f1f15] border-t border-gray-200 dark:border-white/5">
+            <div className="max-w-[1200px] mx-auto px-6 grid md:grid-cols-2 gap-12 items-start">
+              <div className="space-y-8">
+                <div>
+                  <span className="text-primary text-[10px] font-bold uppercase tracking-[0.3em]">Localização</span>
+                  <h2 className="text-4xl font-serif font-black text-gray-900 dark:text-white leading-tight italic mt-2 mb-4">Como Chegar</h2>
+                  <p className="text-lg text-gray-600 dark:text-gray-300 font-medium mb-2">{settings.address}</p>
+                  <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Venha conhecer nossa casa e sentir a energia de perto. Estamos de portas abertas para lhe receber.</p>
                 </div>
-                <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10">
-                  <span className="material-symbols-outlined text-primary mb-2">forest</span>
-                  <p className="text-sm font-bold dark:text-white">Respeito à Natureza</p>
+
+                {settings.transport_image_url && (
+                  <div className="bg-white dark:bg-surface-dark p-6 rounded-3xl border border-gray-100 dark:border-white/10 shadow-sm">
+                    <h4 className="text-sm font-bold uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
+                      <span className="material-symbols-outlined">directions_bus</span> Transporte Público
+                    </h4>
+                    <img src={settings.transport_image_url} alt="Horários de Ônibus" className="rounded-xl w-full border border-gray-100 dark:border-white/5" />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <a
+                    href={settings.google_maps_iframe.match(/src="([^"]+)"/)?.[1] || "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="bg-white dark:bg-surface-dark p-4 rounded-2xl border border-gray-100 dark:border-white/10 flex flex-col items-center justify-center text-center gap-2 hover:border-primary/50 transition-colors group"
+                  >
+                    <span className="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">map</span>
+                    <span className="font-bold text-gray-900 dark:text-white text-sm">Abrir no Maps</span>
+                  </a>
+                  <a
+                    href="https://wa.me/55NUMERO"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="bg-white dark:bg-surface-dark p-4 rounded-2xl border border-gray-100 dark:border-white/10 flex flex-col items-center justify-center text-center gap-2 hover:border-green-500/50 transition-colors group"
+                  >
+                    <span className="material-symbols-outlined text-green-600 text-3xl group-hover:scale-110 transition-transform">chat</span>
+                    <span className="font-bold text-gray-900 dark:text-white text-sm">Dúvidas?</span>
+                  </a>
+                </div>
+              </div>
+
+              <div className="h-[500px] w-full bg-gray-200 dark:bg-surface-dark rounded-3xl overflow-hidden shadow-2xl border-4 border-white dark:border-white/5 relative">
+                {settings.google_maps_iframe ? (
+                  <div dangerouslySetInnerHTML={{ __html: settings.google_maps_iframe.replace('width="600"', 'width="100%"').replace('height="450"', 'height="100%"') }} className="w-full h-full" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400 flex-col gap-2">
+                    <span className="material-symbols-outlined text-4xl">map</span>
+                    <span>Mapa não configurado</span>
+                  </div>
+                )}
+                <div className="absolute top-4 right-4 bg-white dark:bg-black/80 backdrop-blur-md px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-2">
+                  <div className="size-2 rounded-full bg-green-500 animate-pulse"></div>
+                  Casa de Oxóssi
                 </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
       </main>
 
       <footer className="bg-accent-brown dark:bg-[#0B1610] text-white py-16 px-6 border-t-[6px] border-primary">
