@@ -34,7 +34,7 @@ const MemberFinancial: React.FC = () => {
                     .from('member_payments')
                     .select('*')
                     .eq('member_id', memberData.id)
-                    .order('payment_date', { ascending: false });
+                    .order('payment_dates', { ascending: false });
 
                 if (error) throw error;
                 setPayments(data || []);
@@ -82,7 +82,7 @@ const MemberFinancial: React.FC = () => {
                     month: selectedMonth,
                     year: selectedYear,
                     status: 'pending_approval', // Creating new status logic
-                    payment_date: new Date().toISOString(),
+                    payment_dates: new Date().toISOString(),
                     proof_url: publicUrl,
                     created_at: new Date().toISOString()
                 });
