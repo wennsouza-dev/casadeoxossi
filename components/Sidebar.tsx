@@ -81,6 +81,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isOpen = false, onClose }) 
           <NavItem to="/admin/payments" icon="payments" label="Mensalidades" />
           <NavItem to="/admin/members" icon="groups" label="Filhos da Casa" />
           <NavItem to="/admin/agenda" icon="event" label="Agenda" />
+          <NavItem to="/admin/donations" icon="volunteer_activism" label="Doações" />
 
           <div className="my-4 border-t border-gray-100 dark:border-[#28392e]"></div>
 

@@ -12,6 +12,7 @@ import AdminSettings from './pages/AdminSettings';
 import AdminPayments from './pages/AdminPayments';
 import MemberFinancial from './pages/MemberFinancial';
 import MemberDonations from './pages/MemberDonations';
+import AdminDonations from './pages/AdminDonations';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -54,6 +55,7 @@ const App: React.FC = () => {
                 <Route path="/finance" element={<AdminFinance onLogout={handleLogout} />} />
                 <Route path="/agenda" element={<AdminAgenda onLogout={handleLogout} />} />
                 <Route path="/payments" element={<AdminPayments onLogout={handleLogout} />} />
+                <Route path="/donations" element={<AdminDonations onLogout={handleLogout} />} />
                 <Route path="/settings" element={<AdminSettings onLogout={handleLogout} />} />
                 <Route path="*" element={<Dashboard onLogout={handleLogout} />} />
               </Routes>
