@@ -1,6 +1,3 @@
-import React from 'react';
-import MemberSidebar from '../components/MemberSidebar';
-
 import React, { useState, useEffect } from 'react';
 import MemberSidebar from '../components/MemberSidebar';
 import { supabase } from '../lib/supabase';
@@ -127,8 +124,8 @@ const MemberDonations: React.FC = () => {
 
                                 return (
                                     <div key={item.id} className={`p-6 rounded-3xl border shadow-sm flex flex-col transition-all ${isFull
-                                            ? 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 opacity-75'
-                                            : 'bg-white dark:bg-surface-dark border-gray-100 dark:border-border-dark'
+                                        ? 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 opacity-75'
+                                        : 'bg-white dark:bg-surface-dark border-gray-100 dark:border-border-dark'
                                         }`}>
                                         <div className="flex justify-between items-start mb-4">
                                             <div className="p-3 rounded-xl bg-primary/10 text-primary">
