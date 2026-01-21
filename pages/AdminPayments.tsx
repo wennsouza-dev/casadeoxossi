@@ -28,44 +28,283 @@ interface MemberStatus {
 }
 
 const AdminPayments: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
-    <tr>
-        <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">Membro</th>
-        <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">Referência</th>
-        <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right">Valor</th>
-        <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-center">Status</th>
-    </tr>
-                                </thead >
-    <tbody className="divide-y divide-gray-100 dark:divide-[#28392e]">
-        {historyPayments.slice(0, 10).map(payment => (
-            <tr key={payment.id} className="hover:bg-gray-50 dark:hover:bg-[#20362a]">
-                <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">
-                    {payment.members?.full_name}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500">
-                    {new Date(0, payment.month - 1).toLocaleString('pt-BR', { month: 'short' })}/{payment.year}
-                </td>
-                <td className="px-6 py-4 text-right font-bold text-gray-900 dark:text-white">
-                    R$ {payment.amount.toFixed(2)}
-                </td>
-                <td className="px-6 py-4 text-center">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${payment.status === 'paid' ? 'bg-green-100 text-green-700' :
-                        payment.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                            'bg-gray-100 text-gray-500'
-                        }`}>
-                        {payment.status === 'paid' ? 'Pago' :
-                            payment.status === 'rejected' ? 'Rejeitado' : payment.status}
-                    </span>
-                </td>
-            </tr>
-        ))}
-    </tbody>
-                            </table >
-                        </div >
+    const [loading, setLoading] = useState(true);
+    const [payments, setPayments] = useState<Payment[]>([]);
+    const [memberStatuses, setMemberStatuses] = useState<MemberStatus[]>([]);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [processingId, setProcessingId] = useState<string | null>(null);
+    const [history, setHistory] = useState<Payment[]>([]);
 
-                    </div >
-                </div >
-            </main >
-        </div >
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+
+            // 1. Fetch Pending Payments (for approval list)
+            const { data: pendingData, error: pendingError } = await supabase
+                .from('member_payments')
+                .select(`
+          *,
+          member:members (full_name, avatar_url)
+        `)
+                .eq('status', 'pending_approval')
+                .order('created_at', { ascending: false });
+
+            if (pendingError) throw pendingError;
+
+            // 2. Fetch All Members
+            const { data: membersData, error: membersError } = await supabase
+                .from('members')
+                .select('id, full_name, avatar_url, active')
+                .eq('active', true); // Only active members pay fees
+
+            if (membersError) throw membersError;
+
+            // 3. Fetch All Approved Payments (for debt calc)
+            const { data: approvedData, error: approvedError } = await supabase
+                .from('member_payments')
+                .select('*')
+                .eq('status', 'paid');
+
+            if (approvedError) throw approvedError;
+
+            // 4. Fetch History
+            const { data: historyData, error: historyError } = await supabase
+                .from('member_payments')
+                .select(`
+          *,
+          member:members (full_name)
+        `)
+                .neq('status', 'pending_approval')
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            if (historyError) throw historyError;
+            setHistory(historyData as any || []);
+
+
+            // --- Debt Calculation Logic ---
+            const currentYear = new Date().getFullYear(); // 2026 in simulator
+            const currentMonth = new Date().getMonth() + 1; // 1-12
+            const MONTHLY_FEE = 50.00;
+
+            const statuses: MemberStatus[] = membersData.map(member => {
+                // Find paid months for current year
+                const memberPayments = approvedData?.filter(p => p.member_id === member.id && p.year === currentYear) || [];
+                const paidMonths = new Set(memberPayments.map(p => p.month));
+
+                // Calculate pending months (up to current month)
+                let pendingCount = 0;
+                for (let m = 1; m <= currentMonth; m++) {
+                    if (!paidMonths.has(m)) {
+                        pendingCount++;
+                    }
+                }
+
+                const isDefaulting = pendingCount > 0;
+
+                return {
+                    id: member.id,
+                    full_name: member.full_name,
+                    avatar_url: member.avatar_url,
+                    status: isDefaulting ? 'defaulting' : 'up_to_date',
+                    pending_months: pendingCount,
+                    total_due: pendingCount * MONTHLY_FEE,
+                    last_payment: memberPayments.length > 0
+                        ? `${memberPayments[memberPayments.length - 1].month}/${memberPayments[memberPayments.length - 1].year}`
+                        : 'Nunca'
+                };
+            });
+
+            setPayments(pendingData as any || []);
+            setMemberStatuses(statuses);
+
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const handleApprove = async (paymentId: string) => {
+        setProcessingId(paymentId);
+        try {
+            const { error } = await supabase
+                .from('member_payments')
+                .update({ status: 'paid' })
+                .eq('id', paymentId);
+
+            if (error) throw error;
+            await fetchData(); // Refresh to update debt status
+        } catch (error) {
+            console.error('Error approving:', error);
+            alert('Erro ao aprovar.');
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
+    const handleReject = async (paymentId: string) => {
+        if (!confirm('Deseja realmente rejeitar este pagamento?')) return;
+        setProcessingId(paymentId);
+        try {
+            const { error } = await supabase
+                .from('member_payments')
+                .update({ status: 'rejected' })
+                .eq('id', paymentId);
+
+            if (error) throw error;
+            fetchData();
+        } catch (error) {
+            console.error('Error rejecting:', error);
+            alert('Erro ao rejeitar.');
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
+    const pendingApprovals = payments;
+    const defaultingMembers = memberStatuses.filter(m => m.status === 'defaulting');
+    const upToDateMembers = memberStatuses.filter(m => m.status === 'up_to_date');
+
+    return (
+        <div className="bg-background-light dark:bg-background-dark min-h-screen flex overflow-hidden font-display">
+            <Sidebar onLogout={onLogout} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+            <main className="flex-1 ml-0 md:ml-72 p-6 md:p-10 overflow-y-auto">
+                <div className="max-w-7xl mx-auto space-y-8">
+                    <header className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Gestão de Mensalidades</h2>
+                            <p className="text-gray-500 dark:text-[#9db9a6] mt-1">Confira pagamentos e acompanhe a inadimplência.</p>
+                        </div>
+                        <button title="Menu" onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-gray-500 rounded-lg bg-gray-100 dark:bg-white/5">
+                            <span className="material-symbols-outlined">menu</span>
+                        </button>
+                    </header>
+
+                    {/* Pending Approvals Section */}
+                    <section className="bg-amber-50 dark:bg-amber-900/10 rounded-3xl p-6 border border-amber-100 dark:border-amber-900/20">
+                        <div className="flex items-center gap-3 mb-6">
+                            <span className="material-symbols-outlined text-amber-600 text-2xl">pending_actions</span>
+                            <h3 className="text-xl font-bold text-amber-900 dark:text-amber-500">Pendentes de Aprovação ({pendingApprovals.length})</h3>
+                        </div>
+
+                        {pendingApprovals.length === 0 ? (
+                            <div className="text-center py-8 text-amber-800/50 dark:text-amber-500/50 font-medium">
+                                Nenhum comprovante pendente de análise.
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {pendingApprovals.map(payment => (
+                                    <div key={payment.id} className="bg-white dark:bg-[#1A2C22] p-4 rounded-xl shadow-sm border border-amber-100 dark:border-amber-900/20 flex flex-col">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="h-10 w-10 rounded-full bg-gray-200 bg-cover bg-center" style={{ backgroundImage: `url('${(payment as any).member?.avatar_url}')` }}></div>
+                                            <div>
+                                                <p className="font-bold text-gray-900 dark:text-white text-sm">{(payment as any).member?.full_name}</p>
+                                                <p className="text-xs text-gray-500">{payment.month}/{payment.year}</p>
+                                            </div>
+                                            <span className="ml-auto font-black text-green-600">R$ {payment.amount}</span>
+                                        </div>
+                                        <div className="flex gap-2 mt-auto">
+                                            <a
+                                                href={payment.proof_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex-1 py-2 rounded-lg border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 text-xs font-bold flex items-center justify-center hover:bg-gray-50 dark:hover:bg-white/5"
+                                            >
+                                                Ver Comprovante
+                                            </a>
+                                            <button
+                                                onClick={() => handleReject(payment.id)}
+                                                disabled={processingId === payment.id}
+                                                className="p-2 rounded-lg bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-200"
+                                            >
+                                                <span className="material-symbols-outlined text-[18px]">close</span>
+                                            </button>
+                                            <button
+                                                onClick={() => handleApprove(payment.id)}
+                                                disabled={processingId === payment.id}
+                                                className="flex-1 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-bold shadow-lg shadow-green-500/20"
+                                            >
+                                                {processingId === payment.id ? '...' : 'Aprovar'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Defaulting Members */}
+                        <section className="bg-white dark:bg-surface-dark rounded-3xl p-6 border border-gray-100 dark:border-border-dark shadow-sm">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                                    Em Atraso ({defaultingMembers.length})
+                                </h3>
+                                <span className="text-xs text-gray-400">Ano: {new Date().getFullYear()}</span>
+                            </div>
+
+                            <div className="space-y-4">
+                                {defaultingMembers.length === 0 && (
+                                    <p className="text-center text-gray-400 text-sm py-4">Todos os filhos estão em dia! Axé!</p>
+                                )}
+                                {defaultingMembers.map(member => (
+                                    <div key={member.id} className="flex items-center justify-between p-4 rounded-2xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 rounded-full bg-gray-200 bg-cover bg-center" style={{ backgroundImage: `url('${member.avatar_url}')` }}>
+                                                {!member.avatar_url && <span className="material-symbols-outlined text-gray-400 h-full flex items-center justify-center text-xs">person</span>}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-gray-900 dark:text-white text-sm">{member.full_name}</p>
+                                                <p className="text-xs text-red-500 font-bold">{member.pending_months} meses em aberto</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-black text-red-600 dark:text-red-400 text-sm">R$ {member.total_due.toFixed(2)}</p>
+                                            <button className="text-[10px] uppercase font-bold text-gray-400 hover:text-gray-600 mt-1">Cobrar</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        {/* Up to Date Members */}
+                        <section className="bg-white dark:bg-surface-dark rounded-3xl p-6 border border-gray-100 dark:border-border-dark shadow-sm">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                    Em Dia ({upToDateMembers.length})
+                                </h3>
+                            </div>
+
+                            <div className="space-y-3">
+                                {upToDateMembers.length === 0 && (
+                                    <p className="text-center text-gray-400 text-sm py-4">Nenhum filho em dia neste momento.</p>
+                                )}
+                                {upToDateMembers.map(member => (
+                                    <div key={member.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 rounded-full bg-gray-200 bg-cover bg-center" style={{ backgroundImage: `url('${member.avatar_url}')` }}>
+                                                {!member.avatar_url && <span className="material-symbols-outlined text-gray-400 h-full flex items-center justify-center text-xs">person</span>}
+                                            </div>
+                                            <p className="font-medium text-gray-900 dark:text-white text-sm">{member.full_name}</p>
+                                        </div>
+                                        <span className="text-green-500 material-symbols-outlined text-lg">check_circle</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    </div>
+
+                </div>
+            </main>
+        </div>
     );
 };
 
