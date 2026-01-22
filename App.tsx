@@ -77,6 +77,7 @@ const App: React.FC = () => {
                 <Route path="/mensalidades" element={<MemberFinancial />} />
                 <Route path="/checklist" element={<MemberDashboard onLogout={handleLogout} userRole={userRole} />} />
                 <Route path="/doacoes" element={<MemberDonations />} />
+                <Route path="/settings" element={<MemberDashboard onLogout={handleLogout} userRole={userRole} />} />
               </Routes>
             ) : (
               <Navigate to="/login" replace />
