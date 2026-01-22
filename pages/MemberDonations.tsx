@@ -33,6 +33,7 @@ const MemberDonations: React.FC = () => {
     const [userEmail, setUserEmail] = useState('');
     const [pledgeInputs, setPledgeInputs] = useState<{ [key: string]: string }>({});
     const [processingId, setProcessingId] = useState<string | null>(null);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     useEffect(() => {
         const email = localStorage.getItem('userEmail');
@@ -130,12 +131,17 @@ const MemberDonations: React.FC = () => {
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex overflow-hidden font-display">
-            <MemberSidebar />
+            <MemberSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <main className="flex-1 ml-0 md:ml-72 p-6 md:p-10 overflow-y-auto">
                 <div className="max-w-5xl mx-auto space-y-12">
                     <header>
-                        <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Mural de Doações</h2>
-                        <p className="text-gray-500 dark:text-gray-400 mt-1">Contribua com os elementos necessários para nossas giras.</p>
+                        <div className="flex items-center gap-2 mb-2">
+                            <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg dark:text-white dark:hover:bg-white/10 shrink-0">
+                                <span className="material-symbols-outlined">menu</span>
+                            </button>
+                            <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight break-words">Mural de Doações</h2>
+                        </div>
+                        <p className="text-gray-500 dark:text-gray-400 mt-1 break-words">Contribua com os elementos necessários para nossas giras.</p>
                     </header>
 
                     {loading ? (
@@ -155,9 +161,9 @@ const MemberDonations: React.FC = () => {
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 dark:border-white/10 pb-4">
                                         <div>
                                             {expired && <span className="text-[10px] font-bold uppercase tracking-widest bg-red-100 text-red-600 px-2 py-1 rounded-md mb-2 inline-block">Encerrada</span>}
-                                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
                                                 {list.name}
-                                                {list.event_date && <span className="text-sm font-normal text-gray-500 bg-gray-100 dark:bg-white/10 px-2 py-0.5 rounded-full">{new Date(list.event_date).toLocaleDateString('pt-BR')}</span>}
+                                                {list.event_date && <span className="text-sm font-normal text-gray-500 bg-gray-100 dark:bg-white/10 px-2 py-0.5 rounded-full whitespace-nowrap">{new Date(list.event_date).toLocaleDateString('pt-BR')}</span>}
                                             </h3>
                                             <p className="text-gray-500 text-sm mt-1">{list.description}</p>
                                         </div>

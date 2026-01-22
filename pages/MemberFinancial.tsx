@@ -11,6 +11,7 @@ const MemberFinancial: React.FC = () => {
     const [amount, setAmount] = useState('50.00'); // Default value? To be parameterized maybe
     const [file, setFile] = useState<File | null>(null);
     const [userEmail, setUserEmail] = useState('');
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     useEffect(() => {
         const email = localStorage.getItem('userEmail');
@@ -113,25 +114,30 @@ const MemberFinancial: React.FC = () => {
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex overflow-hidden font-display">
-            <MemberSidebar />
+            <MemberSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <main className="flex-1 ml-0 md:ml-72 p-6 md:p-10 overflow-y-auto">
                 <div className="max-w-4xl mx-auto space-y-8">
                     <header>
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Minhas Mensalidades</h2>
-                        <p className="text-gray-500 dark:text-gray-400">Envie seus comprovantes e acompanhe seu histórico.</p>
+                        <div className="flex items-center gap-2 mb-2">
+                            <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg dark:text-white dark:hover:bg-white/10 shrink-0">
+                                <span className="material-symbols-outlined">menu</span>
+                            </button>
+                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white break-words">Minhas Mensalidades</h2>
+                        </div>
+                        <p className="text-gray-500 dark:text-gray-400 break-words">Envie seus comprovantes e acompanhe seu histórico.</p>
                     </header>
 
                     {/* Pending Amount Summary (Mock logic for now) */}
-                    <div className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 p-6 rounded-3xl flex items-center justify-between">
+                    <div className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 p-6 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div>
                             <p className="text-red-600 dark:text-red-400 font-bold uppercase tracking-wider text-xs mb-1">Status Geral</p>
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white break-words">
                                 {payments.some(p => p.status === 'pending_approval')
                                     ? 'Comprovantes em Análise'
                                     : 'Mantenha suas mensalidades em dia!'}
                             </h3>
                         </div>
-                        <span className="material-symbols-outlined text-4xl text-red-500 opacity-50">account_balance_wallet</span>
+                        <span className="material-symbols-outlined text-4xl text-red-500 opacity-50 self-end md:self-auto">account_balance_wallet</span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

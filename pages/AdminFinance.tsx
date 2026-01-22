@@ -6,6 +6,7 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     const [balance, setBalance] = useState({ income: 0, expenses: 0, total: 0 });
     const [expenses, setExpenses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showModal, setShowModal] = useState(false);
 
     // Filters
@@ -128,7 +129,7 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         }
     };
 
-    const openNewExpenseModal = () => {
+    const openNewExpenseModal = (type?: string) => {
         setEditingExpense(null);
         setNewExpense({ description: '', amount: '', category: '', date: new Date().toISOString().split('T')[0] });
         setShowModal(true);
@@ -136,19 +137,26 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex overflow-hidden font-display">
-            <Sidebar onLogout={onLogout} />
+            <Sidebar onLogout={onLogout} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
             <main className="flex-1 ml-0 md:ml-72 flex flex-col h-screen overflow-hidden relative">
-                <header className="h-20 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-[#28392e] flex items-center justify-between px-6 sticky top-0 z-10">
-                    <div className="flex items-center gap-4">
-                        <h2 className="text-xl font-bold text-gray-800 dark:text-white mr-4">Financeiro</h2>
+                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-4 md:py-0 px-6 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-[#28392e] sticky top-0 z-10 w-full">
+                    <div className="flex flex-col md:flex-row md:items-center gap-4 w-full md:w-auto">
+                        <div className="flex items-center justify-between md:justify-start w-full md:w-auto">
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg dark:text-white dark:hover:bg-white/10">
+                                    <span className="material-symbols-outlined">menu</span>
+                                </button>
+                                <h2 className="text-xl font-bold text-gray-800 dark:text-white mr-4">Financeiro</h2>
+                            </div>
+                        </div>
 
                         {/* Filters */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 w-full md:w-auto">
                             <select
                                 value={selectedMonth}
                                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                                className="bg-gray-100 dark:bg-[#1A2C22] border-none rounded-lg text-sm font-bold text-gray-700 dark:text-gray-300 py-2 pl-3 pr-8 focus:ring-2 focus:ring-primary"
+                                className="flex-1 md:flex-none bg-gray-100 dark:bg-[#1A2C22] border-none rounded-lg text-sm font-bold text-gray-700 dark:text-gray-300 py-3 md:py-2 pl-3 pr-8 focus:ring-2 focus:ring-primary"
                             >
                                 {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                                     <option key={m} value={m}>{new Date(0, m - 1).toLocaleString('pt-BR', { month: 'long' })}</option>
@@ -157,7 +165,7 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                             <select
                                 value={selectedYear}
                                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                                className="bg-gray-100 dark:bg-[#1A2C22] border-none rounded-lg text-sm font-bold text-gray-700 dark:text-gray-300 py-2 pl-3 pr-8 focus:ring-2 focus:ring-primary"
+                                className="flex-1 md:flex-none bg-gray-100 dark:bg-[#1A2C22] border-none rounded-lg text-sm font-bold text-gray-700 dark:text-gray-300 py-3 md:py-2 pl-3 pr-8 focus:ring-2 focus:ring-primary"
                             >
                                 {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
                                     <option key={y} value={y}>{y}</option>
@@ -166,20 +174,20 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                         </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex gap-2 w-full md:w-auto flex-wrap">
                         <button
                             onClick={() => openNewExpenseModal('income')}
-                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-green-500/20 transition-all"
+                            className="flex-1 md:flex-none bg-green-500 hover:bg-green-600 text-white px-4 py-3 md:py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 transition-all whitespace-nowrap"
                         >
                             <span className="material-symbols-outlined text-[18px]">add</span>
-                            Nova Entrada
+                            Entrada
                         </button>
                         <button
                             onClick={() => openNewExpenseModal('expense')}
-                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-red-500/20 transition-all"
+                            className="flex-1 md:flex-none bg-red-500 hover:bg-red-600 text-white px-4 py-3 md:py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 transition-all whitespace-nowrap"
                         >
                             <span className="material-symbols-outlined text-[18px]">remove</span>
-                            Nova Saída
+                            Saída
                         </button>
                     </div>
                 </header>
@@ -231,7 +239,7 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                             <div className="p-6 border-b border-gray-100 dark:border-[#28392e]">
                                 <h3 className="font-bold text-lg text-gray-900 dark:text-white">Saídas do Período</h3>
                             </div>
-                            <table className="w-full text-left">
+                            <table className="w-full text-left hidden md:table">
                                 <thead className="bg-gray-50 dark:bg-[#111813]">
                                     <tr>
                                         <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-[#5c7a67]">Descrição</th>
@@ -288,6 +296,55 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                     )}
                                 </tbody>
                             </table>
+
+                            {/* Mobile Card View */}
+                            <div className="md:hidden divide-y divide-gray-100 dark:divide-[#28392e]">
+                                {expenses.length === 0 ? (
+                                    <div className="p-8 text-center text-gray-500">Nenhum lançamento registrado neste mês.</div>
+                                ) : (
+                                    expenses.map(expense => (
+                                        <div key={expense.id} className="p-4 space-y-3">
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${expense.type === 'income' ? 'bg-green-100 text-green-600 dark:bg-green-900/20' : 'bg-red-100 text-red-600 dark:bg-red-900/20'}`}>
+                                                        <span className="material-symbols-outlined">
+                                                            {expense.type === 'income' ? 'arrow_upward' : 'arrow_downward'}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-gray-900 dark:text-white line-clamp-1">{expense.description}</p>
+                                                        <p className="text-xs text-gray-500">{expense.category || 'Sem categoria'}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className={`font-black text-sm ${expense.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
+                                                        {expense.type === 'income' ? '+ ' : '- '}
+                                                        R$ {expense.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </p>
+                                                    <p className="text-xs text-gray-400">{new Date(expense.expense_date + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-2 pt-2 border-t border-gray-50 dark:border-white/5">
+                                                <button
+                                                    onClick={() => handleEditClick(expense)}
+                                                    className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 font-bold text-xs flex items-center justify-center gap-1"
+                                                >
+                                                    <span className="material-symbols-outlined text-[16px]">edit</span>
+                                                    Editar
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteClick(expense.id)}
+                                                    className="flex-1 py-2 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 font-bold text-xs flex items-center justify-center gap-1"
+                                                >
+                                                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                    Excluir
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
 
                     </div>

@@ -220,34 +220,39 @@ const AdminDonations: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 <div className="max-w-7xl mx-auto space-y-8">
 
                     {/* Header */}
-                    <header className="flex items-center justify-between">
-                        <div>
-                            {view === 'items' && selectedList ? (
-                                <button onClick={() => setView('lists')} className="text-sm font-bold text-gray-400 hover:text-primary mb-2 flex items-center gap-1">
-                                    <span className="material-symbols-outlined text-sm">arrow_back</span> Voltar para Listas
-                                </button>
-                            ) : null}
-                            <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
-                                {view === 'lists' ? 'Gestão de Doações' : selectedList?.name}
-                            </h2>
-                            <p className="text-gray-500 dark:text-[#9db9a6] mt-1">
-                                {view === 'lists' ? 'Gerencie as listas de pedidos para as giras.' : selectedList?.description || 'Gerencie os itens desta lista.'}
-                            </p>
+                    <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-start gap-4 w-full md:w-auto">
+                            <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 mt-1 text-gray-500 hover:bg-gray-100 rounded-lg dark:text-white dark:hover:bg-white/10 shrink-0">
+                                <span className="material-symbols-outlined">menu</span>
+                            </button>
+                            <div className="flex-1 min-w-0">
+                                {view === 'items' && selectedList ? (
+                                    <button onClick={() => setView('lists')} className="text-sm font-bold text-gray-400 hover:text-primary mb-2 flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-sm">arrow_back</span> Voltar para Listas
+                                    </button>
+                                ) : null}
+                                <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight break-words">
+                                    {view === 'lists' ? 'Gestão de Doações' : selectedList?.name}
+                                </h2>
+                                <p className="text-gray-500 dark:text-[#9db9a6] mt-1 text-sm md:text-base break-words">
+                                    {view === 'lists' ? 'Gerencie as listas de pedidos para as giras.' : selectedList?.description || 'Gerencie os itens desta lista.'}
+                                </p>
+                            </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2 w-full md:w-auto">
                             {view === 'lists' ? (
-                                <button onClick={() => setShowListModal(true)} className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-primary/20">
+                                <button onClick={() => setShowListModal(true)} className="flex-1 md:flex-none bg-primary hover:bg-primary-hover text-white px-4 py-3 md:py-2 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 text-sm md:text-base">
                                     <span className="material-symbols-outlined">add</span> Nova Lista
                                 </button>
                             ) : (
                                 <>
-                                    <button onClick={() => generateWhatsAppList()} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-green-600/20">
-                                        <span className="material-symbols-outlined">share</span> Compartilhar Tudo
+                                    <button onClick={() => generateWhatsAppList()} className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white px-4 py-3 md:py-2 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-600/20 text-sm md:text-base whitespace-nowrap">
+                                        <span className="material-symbols-outlined">share</span> Compartilhar
                                     </button>
-                                    <button onClick={handleOpenImport} className="bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
+                                    <button onClick={handleOpenImport} className="flex-1 md:flex-none bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white px-4 py-3 md:py-2 rounded-xl font-bold flex items-center justify-center gap-2 text-sm md:text-base">
                                         <span className="material-symbols-outlined">download</span> Importar
                                     </button>
-                                    <button onClick={() => setShowItemModal(true)} className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-primary/20">
+                                    <button onClick={() => setShowItemModal(true)} className="flex-1 md:flex-none bg-primary hover:bg-primary-hover text-white px-4 py-3 md:py-2 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 text-sm md:text-base">
                                         <span className="material-symbols-outlined">add</span> Novo Item
                                     </button>
                                 </>

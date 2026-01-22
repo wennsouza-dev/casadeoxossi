@@ -12,6 +12,7 @@ interface MemberWithPayment extends Member {
 const AdminPros: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     const [members, setMembers] = useState<MemberWithPayment[]>([]);
     const [loading, setLoading] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [stats, setStats] = useState({ paid: 0, pending: 0, total: 0 });
 
@@ -128,11 +129,16 @@ const AdminPros: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex overflow-hidden font-display">
-            <Sidebar onLogout={onLogout} />
+            <Sidebar onLogout={onLogout} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
             <main className="flex-1 ml-0 md:ml-72 flex flex-col h-screen overflow-hidden relative">
-                <header className="h-20 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-[#28392e] flex items-center justify-between px-6 sticky top-0 z-10">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-white">Gestão de Mensalidades</h2>
+                <header className="h-20 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-[#28392e] flex items-center px-6 sticky top-0 z-10">
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg dark:text-white dark:hover:bg-white/10 shrink-0">
+                            <span className="material-symbols-outlined">menu</span>
+                        </button>
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-white truncate">Gestão de Mensalidades</h2>
+                    </div>
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-6 md:p-10">
@@ -140,7 +146,7 @@ const AdminPros: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
                         {/* Month Selector & Stats */}
                         <div className="flex flex-col md:flex-row gap-6 justify-between items-center bg-white dark:bg-[#1A2C22] p-6 rounded-3xl border border-gray-100 dark:border-[#28392e]">
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
                                 <button onClick={() => handleMonthChange(-1)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full">
                                     <span className="material-symbols-outlined">chevron_left</span>
                                 </button>
@@ -155,7 +161,7 @@ const AdminPros: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                 </button>
                             </div>
 
-                            <div className="flex gap-6">
+                            <div className="flex gap-6 w-full md:w-auto justify-center">
                                 <div className="text-center">
                                     <p className="text-xs font-bold uppercase text-gray-400">Pagos</p>
                                     <p className="text-2xl font-black text-green-500">{stats.paid}</p>
@@ -169,7 +175,8 @@ const AdminPros: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
                         {/* Members List */}
                         <div className="bg-white dark:bg-[#1A2C22] rounded-3xl border border-gray-100 dark:border-[#28392e] overflow-hidden">
-                            <table className="w-full text-left">
+                            {/* Desktop Table */}
+                            <table className="w-full text-left hidden md:table">
                                 <thead className="bg-gray-50 dark:bg-[#111813]">
                                     <tr>
                                         <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-[#5c7a67]">Filho</th>
@@ -222,6 +229,52 @@ const AdminPros: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                     ))}
                                 </tbody>
                             </table>
+
+                            {/* Mobile List (Cards) */}
+                            <div className="md:hidden divide-y divide-gray-100 dark:divide-[#28392e]">
+                                {members.map(member => (
+                                    <div key={member.id} className="p-4 space-y-4">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <p className="font-bold text-gray-900 dark:text-white text-lg">{member.name}</p>
+                                                <p className="text-sm text-gray-500 capitalize">{member.orixa}</p>
+                                            </div>
+                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${member.paymentStatus === 'paid'
+                                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                                }`}>
+                                                {member.paymentStatus === 'paid' ? 'PAGO' : 'PENDENTE'}
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div className="flex items-center gap-2 flex-1">
+                                                <span className="text-xs font-bold uppercase text-gray-400">Mensalidade:</span>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-sm text-gray-500">R$</span>
+                                                    <input
+                                                        type="number"
+                                                        className="w-20 bg-transparent border-b border-gray-300 focus:border-primary outline-none py-1 text-sm font-bold text-gray-900 dark:text-white"
+                                                        value={member.monthlyFeeValue}
+                                                        onChange={(e) => handleUpdateFee(member.id, parseFloat(e.target.value))}
+                                                        onBlur={(e) => handleUpdateFee(member.id, parseFloat(e.target.value))}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => handleTogglePayment(member)}
+                                            className={`w-full py-3 rounded-xl text-sm font-bold transition-all ${member.paymentStatus === 'paid'
+                                                ? 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20'
+                                                : 'bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-900/20'
+                                                }`}
+                                        >
+                                            {member.paymentStatus === 'paid' ? 'Desmarcar Pagamento' : 'Marcar como Pago'}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
                     </div>

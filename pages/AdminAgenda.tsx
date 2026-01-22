@@ -15,6 +15,7 @@ interface CalendarEvent {
 const AdminAgenda: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [loading, setLoading] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [newEvent, setNewEvent] = useState<Partial<CalendarEvent>>({
         title: '',
@@ -82,14 +83,19 @@ const AdminAgenda: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex overflow-hidden font-display">
-            <Sidebar onLogout={onLogout} />
+            <Sidebar onLogout={onLogout} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
             <main className="flex-1 ml-0 md:ml-72 flex flex-col h-screen overflow-hidden relative">
-                <header className="h-20 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-[#28392e] flex items-center justify-between px-6 sticky top-0 z-10">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-white">Agenda da Casa</h2>
+                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-4 md:py-0 px-6 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-[#28392e] sticky top-0 z-10">
+                    <div className="flex items-center gap-4 w-full md:w-auto">
+                        <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg dark:text-white dark:hover:bg-white/10 shrink-0">
+                            <span className="material-symbols-outlined">menu</span>
+                        </button>
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-white">Agenda da Casa</h2>
+                    </div>
                     <button
                         onClick={() => setShowModal(true)}
-                        className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-primary/20"
+                        className="w-full md:w-auto bg-primary hover:bg-primary-hover text-white px-4 py-3 md:py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
                     >
                         <span className="material-symbols-outlined text-[18px]">add</span>
                         Novo Evento

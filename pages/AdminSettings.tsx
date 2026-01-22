@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar';
 import { supabase } from '../lib/supabase';
 
 const AdminSettings: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'profile' | 'house'>('profile');
 
     // Member Profile State
@@ -179,14 +180,19 @@ const AdminSettings: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex overflow-hidden font-display">
-            <Sidebar onLogout={onLogout} />
+            <Sidebar onLogout={onLogout} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
             <main className="flex-1 ml-0 md:ml-72 flex flex-col h-screen overflow-hidden relative">
-                <header className="h-20 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-[#28392e] flex items-center justify-between px-6 sticky top-0 z-10">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-white">Configurações</h2>
-                    <div className="flex gap-2">
-                        <button onClick={() => setActiveTab('profile')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeTab === 'profile' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5'}`}>Meu Perfil</button>
-                        <button onClick={() => setActiveTab('house')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeTab === 'house' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5'}`}>Casa de Oxóssi</button>
+                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-4 md:py-0 px-6 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-[#28392e] sticky top-0 z-10 w-full">
+                    <div className="flex items-center gap-4 w-full md:w-auto">
+                        <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg dark:text-white dark:hover:bg-white/10 shrink-0">
+                            <span className="material-symbols-outlined">menu</span>
+                        </button>
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-white truncate">Configurações</h2>
+                    </div>
+                    <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+                        <button onClick={() => setActiveTab('profile')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap ${activeTab === 'profile' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5'}`}>Meu Perfil</button>
+                        <button onClick={() => setActiveTab('house')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap ${activeTab === 'house' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5'}`}>Casa de Oxóssi</button>
                     </div>
                 </header>
 
