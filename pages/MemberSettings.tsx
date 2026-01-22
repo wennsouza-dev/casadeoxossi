@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase';
 const MemberSettings: React.FC = () => {
     const [fullName, setFullName] = useState('');
     const [religiousName, setReligiousName] = useState('');
+    const [email, setEmail] = useState('');
+    const [role, setRole] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -17,8 +19,8 @@ const MemberSettings: React.FC = () => {
     const fetchUserData = async () => {
         try {
             setLoading(true);
-            const email = localStorage.getItem('userEmail');
-            if (!email) {
+            const userEmail = localStorage.getItem('userEmail');
+            if (!userEmail) {
                 setMessage({ type: 'error', text: 'Sessão inválida. Por favor faça login novamente.' });
                 setLoading(false);
                 return;
@@ -26,8 +28,8 @@ const MemberSettings: React.FC = () => {
 
             const { data, error } = await supabase
                 .from('members')
-                .select('full_name, religious_name, avatar_url')
-                .eq('email', email)
+                .select('full_name, religious_name, avatar_url, email, role')
+                .eq('email', userEmail)
                 .single();
 
             if (error) throw error;
@@ -36,6 +38,8 @@ const MemberSettings: React.FC = () => {
                 setFullName(data.full_name);
                 setReligiousName(data.religious_name || '');
                 setAvatarUrl(data.avatar_url);
+                setEmail(data.email || userEmail);
+                setRole(data.role || 'Membro');
             }
 
         } catch (err: any) {
@@ -83,8 +87,8 @@ const MemberSettings: React.FC = () => {
         setMessage(null);
 
         try {
-            const email = localStorage.getItem('userEmail');
-            if (!email) throw new Error("No user email");
+            const userEmail = localStorage.getItem('userEmail');
+            if (!userEmail) throw new Error("No user email");
 
             const { error } = await supabase
                 .from('members')
@@ -93,7 +97,7 @@ const MemberSettings: React.FC = () => {
                     religious_name: religiousName,
                     avatar_url: avatarUrl
                 })
-                .eq('email', email);
+                .eq('email', userEmail);
 
             if (error) throw error;
 
@@ -150,31 +154,56 @@ const MemberSettings: React.FC = () => {
                     {uploading && <p className="text-xs text-primary font-bold animate-pulse">Enviando foto...</p>}
                 </div>
 
-                <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-[#9db9a6] mb-2">
-                        Nome Civil
-                    </label>
-                    <input
-                        type="text"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        className="w-full rounded-xl border-gray-200 dark:border-border-dark p-4 text-sm dark:text-white dark:bg-[#1A2C22] focus:ring-primary focus:border-primary"
-                        required
-                    />
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-[#9db9a6] mb-2">
+                            Nome Civil
+                        </label>
+                        <input
+                            type="text"
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            className="w-full rounded-xl border-gray-200 dark:border-border-dark p-4 text-sm dark:text-white dark:bg-[#1A2C22] focus:ring-primary focus:border-primary"
+                            required
+                        />
+                    </div>
 
-                <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-[#9db9a6] mb-2">
-                        Nome de Santo (Orixá/Entidade)
-                    </label>
-                    <input
-                        type="text"
-                        value={religiousName}
-                        onChange={(e) => setReligiousName(e.target.value)}
-                        placeholder="Ex: Ogum Beira Mar / Doçu"
-                        className="w-full rounded-xl border-gray-200 dark:border-border-dark p-4 text-sm dark:text-white dark:bg-[#1A2C22] focus:ring-primary focus:border-primary"
-                    />
-                    <p className="text-xs text-gray-400 mt-2">Como você é chamado na casa.</p>
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-[#9db9a6] mb-2">
+                            Orixá / Entidade (Nome de Santo)
+                        </label>
+                        <input
+                            type="text"
+                            value={religiousName}
+                            onChange={(e) => setReligiousName(e.target.value)}
+                            placeholder="Ex: Ogum Beira Mar / Doçu"
+                            className="w-full rounded-xl border-gray-200 dark:border-border-dark p-4 text-sm dark:text-white dark:bg-[#1A2C22] focus:ring-primary focus:border-primary"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-[#9db9a6] mb-2">
+                            E-mail (Somente Admin altera)
+                        </label>
+                        <input
+                            type="text"
+                            value={email}
+                            disabled
+                            className="w-full rounded-xl border-gray-200 dark:border-border-dark p-4 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/5 cursor-not-allowed"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-[#9db9a6] mb-2">
+                            Cargo / Função (Somente Admin altera)
+                        </label>
+                        <input
+                            type="text"
+                            value={role}
+                            disabled
+                            className="w-full rounded-xl border-gray-200 dark:border-border-dark p-4 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/5 cursor-not-allowed"
+                        />
+                    </div>
                 </div>
 
                 <div className="pt-4">

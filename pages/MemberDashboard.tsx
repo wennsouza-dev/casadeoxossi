@@ -16,7 +16,103 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
     const [events, setEvents] = useState<any[]>([]);
     const [donationItems, setDonationItems] = useState<any[]>([]);
 
+    const [notifications, setNotifications] = useState<{ type: 'late' | 'pending_approval', message: string, total?: number, count?: number } | null>(null);
+
     useEffect(() => {
+        const checkMonthlyFees = async () => {
+            const email = localStorage.getItem('userEmail');
+            if (!email) return;
+
+            // 1. Get Member Info (Fee and ID)
+            const { data: member } = await supabase
+                .from('members')
+                .select('id, monthly_fee, created_at, monthly_fee_status') // monthly_fee_status can override logic if 'Isento'
+                .eq('email', email)
+                .single();
+
+            if (!member) return;
+            if (member.monthly_fee_status === 'Isento') return;
+
+            const monthlyFee = Number(member.monthly_fee) || 0;
+            if (monthlyFee === 0) return;
+
+            // 2. Calculate months to check (from creation or Start of Year? Usually continuous, but let's check current year for MVP reliability or last 12 months)
+            // Let's look for "Open" months.
+            // Better: Get all payments for this member.
+            const { data: payments } = await supabase
+                .from('member_payments')
+                .select('*')
+                .eq('member_id', member.id);
+
+            const existingPayments = payments || [];
+
+            // Logic: Check past 6 months up to current month
+            const today = new Date();
+            const lateMonths: string[] = [];
+            let pendingApproval = false;
+            let totalDebt = 0;
+
+            // Check only current year 2026 for now (as seen in screenshot) or rolling
+            // Assuming checks starting from Member Creation or recent times. Let's check last 6 months to avoid legacy debt pollution if any.
+
+            for (let i = 0; i <= 5; i++) {
+                const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                // IF date is before member creation, skip
+                if (new Date(member.created_at) > new Date(d.getFullYear(), d.getMonth() + 1, 0)) continue;
+
+                const month = d.getMonth() + 1;
+                const year = d.getFullYear();
+
+                const payment = existingPayments.find(p => p.month === month && p.year === year);
+
+                // Status Logic
+                if (payment) {
+                    if (payment.status === 'approved') continue; // Paid
+                    if (payment.status === 'pending' || payment.status === 'waiting_approval') {
+                        // If proof_url exists and status is pending, it is "Aguardando aprovação"
+                        if (payment.proof_url) {
+                            // Only show "Aguardando" if it's the ONLY thing or priority?
+                            // User said: "se o filho já enviar o comprovante aparece que está aguardando aprovação"
+                            // If they are late for Jan and Feb, but sent Jan, showing "Aguardando" for Jan is nice, but "Atrasado" for Feb is urgent.
+                            // Let's count debt.
+                            // However, if they sent proof, we don't count as 'debt' for the red alert yet, maybe yellow alert.
+                            if (i === 0) pendingApproval = true; // Only care about current month waiting for simplified alert
+                            continue;
+                        }
+                    }
+                    // If rejected, it counts as late/debt
+                }
+
+                // If no payment OR rejected
+                lateMonths.push(d.toLocaleString('pt-BR', { month: 'long' }));
+                totalDebt += monthlyFee;
+            }
+
+            if (lateMonths.length > 0) {
+                // Formatting message
+                if (lateMonths.length === 1) {
+                    setNotifications({
+                        type: 'late',
+                        message: `Você está atrasado com a mensalidade de ${lateMonths[0]}.`,
+                        total: totalDebt,
+                        count: 1
+                    });
+                } else {
+                    setNotifications({
+                        type: 'late',
+                        message: `Você possui ${lateMonths.length} mensalidades em atraso.`,
+                        total: totalDebt,
+                        count: lateMonths.length
+                    });
+                }
+            } else if (pendingApproval) {
+                setNotifications({
+                    type: 'pending_approval',
+                    message: 'Seu pagamento está aguardando aprovação do pai de santo.'
+                });
+            }
+        };
+
         const fetchEvents = async () => {
             const today = new Date().toISOString().split('T')[0];
             const { data } = await supabase
@@ -40,6 +136,7 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
             if (data) setDonationItems(data);
         };
 
+        checkMonthlyFees();
         fetchEvents();
         fetchDonations();
     }, []);
@@ -61,6 +158,45 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                 ) : (
                     <>
                         <div className="max-w-7xl mx-auto space-y-8 w-full mt-8 md:mt-0">
+
+                            {/* Payment Notifications */}
+                            {notifications && (
+                                <div className={`w-full rounded-2xl p-6 border flex items-start gap-4 shadow-sm ${notifications.type === 'late'
+                                        ? 'bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-400'
+                                        : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-700 dark:text-yellow-400'
+                                    }`}>
+                                    <div className={`p-2 rounded-full ${notifications.type === 'late' ? 'bg-red-500/20' : 'bg-yellow-500/20'
+                                        }`}>
+                                        <span className="material-symbols-outlined text-2xl">
+                                            {notifications.type === 'late' ? 'warning' : 'hourglass_top'}
+                                        </span>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="font-bold text-lg mb-1">
+                                            {notifications.type === 'late' ? 'Atenção!' : 'Pagamento em Análise'}
+                                        </h3>
+                                        <p className="text-sm font-medium opacity-90 mb-2">
+                                            {notifications.message}
+                                        </p>
+                                        {notifications.total !== undefined && notifications.total > 0 && (
+                                            <div className="mt-2 inline-flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-lg border border-red-500/10">
+                                                <span className="text-xs uppercase font-bold tracking-wider">Valor Total:</span>
+                                                <span className="font-black text-lg">
+                                                    {notifications.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {notifications.type === 'late' && (
+                                        <Link
+                                            to="/filhos/mensalidades"
+                                            className="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-red-500/20 hover:bg-red-700 transition-colors self-center whitespace-nowrap"
+                                        >
+                                            Regularizar
+                                        </Link>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Header Section */}
                             <div>
