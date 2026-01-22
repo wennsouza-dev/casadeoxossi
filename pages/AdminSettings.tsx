@@ -63,9 +63,47 @@ const AdminSettings: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         const email = localStorage.getItem('userEmail');
         if (!email) return;
 
-        const { error } = await supabase.from('members').update({ full_name: fullName, religious_name: religiousName, avatar_url: avatarUrl }).eq('email', email);
-        if (error) setMessage({ type: 'error', text: 'Erro ao salvar.' });
-        else setMessage({ type: 'success', text: 'Perfil atualizado!' });
+        // Check if member entry exists
+        const { data: existingMember } = await supabase
+            .from('members')
+            .select('id')
+            .eq('email', email)
+            .single();
+
+        let error;
+
+        if (existingMember) {
+            ({ error } = await supabase
+                .from('members')
+                .update({
+                    full_name: fullName,
+                    religious_name: religiousName,
+                    avatar_url: avatarUrl
+                })
+                .eq('email', email));
+        } else {
+            // Create new member entry for Admin
+            ({ error } = await supabase
+                .from('members')
+                .insert([{
+                    email: email,
+                    full_name: fullName,
+                    religious_name: religiousName,
+                    avatar_url: avatarUrl,
+                    role: 'Administrador',
+                    status: 'Ativo',
+                    monthly_fee_status: 'Isento',
+                    active: true,
+                    created_at: new Date().toISOString()
+                }]));
+        }
+
+        if (error) {
+            console.error(error);
+            setMessage({ type: 'error', text: 'Erro ao salvar.' });
+        } else {
+            setMessage({ type: 'success', text: 'Perfil atualizado!' });
+        }
     };
 
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
