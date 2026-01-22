@@ -17,6 +17,70 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState(''); // Only for registration
   const [accessKey, setAccessKey] = useState(''); // Only for registration
+  const [rememberMe, setRememberMe] = useState(false);
+
+  React.useEffect(() => {
+    const savedEmail = localStorage.getItem('rememberedEmail');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
+
+  const [isRecovering, setIsRecovering] = useState(false);
+
+  const handleRecoverySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccessMessage('');
+
+    try {
+      // 1. Validate Access Key
+      if (accessKey.toLowerCase().trim() !== 'casadeoxossi') {
+        setError('Chave de acesso incorreta.');
+        setLoading(false);
+        return;
+      }
+
+      // 2. Check if user exists
+      const { data: existingUser } = await supabase
+        .from('members')
+        .select('id')
+        .eq('email', email.toLowerCase().trim())
+        .single();
+
+      if (!existingUser) {
+        setError('E-mail não encontrado.');
+        setLoading(false);
+        return;
+      }
+
+      // 3. Update Password
+      const { error: updateError } = await supabase
+        .from('members')
+        .update({ password: password })
+        .eq('email', email.toLowerCase().trim());
+
+      if (updateError) throw updateError;
+
+      setSuccessMessage('Senha redefinida com sucesso! Faça login com a nova senha.');
+
+      setTimeout(() => {
+        setIsRecovering(false);
+        setSuccessMessage('');
+        setPassword('');
+        setAccessKey('');
+        // Keep email field populated for convenience
+      }, 3000);
+
+    } catch (err: any) {
+      console.error(err);
+      setError('Erro ao redefinir senha.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +98,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
         if (adminData && !adminError) {
           localStorage.setItem('userEmail', email.toLowerCase().trim());
+          if (rememberMe) {
+            localStorage.setItem('rememberedEmail', email.toLowerCase().trim());
+          } else {
+            localStorage.removeItem('rememberedEmail');
+          }
           onLogin('admin');
           return;
         }
@@ -76,6 +145,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
       // Success
       localStorage.setItem('userEmail', email.toLowerCase().trim()); // Persist email for session context
+
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', email.toLowerCase().trim());
+      } else {
+        localStorage.removeItem('rememberedEmail');
+      }
+
       onLogin('member');
 
     } catch (err: any) {
@@ -152,6 +228,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
   return (
     <div className="flex min-h-screen w-full font-display">
+      {/* ... Left Side (Hero) remains same ... */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-[#0f1c13] items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <div className="w-full h-full bg-cover bg-center opacity-30 mix-blend-overlay" style={{ backgroundImage: `url('${IMAGES.FOREST_LOGIN}')` }}></div>
@@ -170,14 +247,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         <div className="w-full max-w-md space-y-10">
           <div className="text-center lg:text-left">
             <h2 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white">
-              {isRegistering ? 'Crie sua conta' : 'Acesse sua conta'}
+              {isRecovering ? 'Recuperar Senha' : (isRegistering ? 'Crie sua conta' : 'Acesse sua conta')}
             </h2>
             <p className="mt-3 text-sm text-gray-500 dark:text-[#9db9a6]">
-              {isRegistering ? 'Preencha os dados e a chave da casa para se cadastrar.' : 'Entre com suas credenciais para gerenciar a casa.'}
+              {isRecovering
+                ? 'Informe seu e-mail, a chave da casa e a nova senha.'
+                : (isRegistering ? 'Preencha os dados e a chave da casa para se cadastrar.' : 'Entre com suas credenciais para gerenciar a casa.')}
             </p>
           </div>
 
-          <form onSubmit={isRegistering ? handleRegisterSubmit : handleLoginSubmit} className="space-y-6">
+          <form onSubmit={isRecovering ? handleRecoverySubmit : (isRegistering ? handleRegisterSubmit : handleLoginSubmit)} className="space-y-6">
             {error && (
               <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm font-bold text-center">{error}</div>
             )}
@@ -186,7 +265,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             )}
 
             <div className="space-y-5">
-              {isRegistering && (
+              {/* Nome Completo (Register Only) */}
+              {isRegistering && !isRecovering && (
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-[#9db9a6] mb-2">Nome Completo</label>
                   <div className="relative group">
@@ -205,6 +285,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 </div>
               )}
 
+              {/* Email (All views) */}
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-[#9db9a6] mb-2">Email</label>
                 <div className="relative group">
@@ -222,23 +303,38 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 </div>
               </div>
 
+              {/* Password (All views - is New Password for recovery) */}
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-[#9db9a6] mb-2">Senha</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-[#9db9a6] mb-2">
+                  {isRecovering ? 'Nova Senha' : 'Senha'}
+                </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-primary transition-colors">
                     <span className="material-symbols-outlined text-[20px]">lock</span>
                   </div>
                   <input
                     className="block w-full rounded-xl border-gray-200 dark:border-border-dark py-4 pl-12 text-sm dark:text-white dark:bg-surface-dark focus:ring-primary focus:border-primary transition-all bg-gray-50 dark:bg-[#1A2C22]"
-                    placeholder={isRegistering ? "Crie uma senha" : "Sua senha (vazio p/ admin)"}
+                    placeholder={isRecovering ? "Crie uma nova senha" : (isRegistering ? "Crie uma senha" : "Sua senha")}
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
+                {!isRegistering && !isRecovering && (
+                  <div className="flex justify-end mt-1">
+                    <button
+                      type="button"
+                      onClick={() => { setIsRecovering(true); setError(''); setSuccessMessage(''); }}
+                      className="text-xs font-bold text-gray-400 hover:text-primary transition-colors"
+                    >
+                      Esqueceu a senha?
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {isRegistering && (
+              {/* Access Key (Register OR Recovery) */}
+              {(isRegistering || isRecovering) && (
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-[#9db9a6] mb-2">Chave da Casa</label>
                   <div className="relative group">
@@ -254,7 +350,25 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                       onChange={(e) => setAccessKey(e.target.value)}
                     />
                   </div>
-                  <p className="text-xs text-gray-400 mt-2 ml-1">Digite a chave fornecida pelo zelo para cadastro.</p>
+                  <p className="text-xs text-gray-400 mt-2 ml-1">
+                    {isRecovering ? 'Digite a chave da casa para autorizar a troca.' : 'Digite a chave fornecida pelo zelo para cadastro.'}
+                  </p>
+                </div>
+              )}
+
+              {/* Remember Me (Login only) */}
+              {!isRegistering && !isRecovering && (
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    type="checkbox"
+                    className="h-4 w-4 bg-gray-50 dark:bg-[#1A2C22] border-gray-300 dark:border-border-dark rounded text-primary focus:ring-primary border-gray-200"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                  />
+                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                    Manter conectado
+                  </label>
                 </div>
               )}
             </div>
@@ -265,20 +379,34 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 className="flex w-full justify-center rounded-xl bg-primary px-4 py-4 text-sm font-black text-white shadow-xl shadow-primary/20 hover:bg-primary-hover focus:outline-none transition-all transform active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                 type="submit"
               >
-                {loading ? 'Processando...' : (isRegistering ? 'Criar Conta' : 'Entrar no Portal')}
+                {loading ? 'Processando...' : (isRecovering ? 'Definir Nova Senha' : (isRegistering ? 'Criar Conta' : 'Entrar no Portal'))}
               </button>
 
               <button
                 className="flex w-full justify-center rounded-xl bg-transparent border border-gray-200 dark:border-border-dark px-4 py-4 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-all"
                 type="button"
                 onClick={() => {
-                  setIsRegistering(!isRegistering);
+                  if (isRecovering) {
+                    setIsRecovering(false);
+                  } else {
+                    setIsRegistering(!isRegistering);
+                  }
                   setError('');
                   setSuccessMessage('');
                 }}
               >
-                {isRegistering ? 'Já tem conta? Faça login' : 'Primeiro acesso? Cadastre-se'}
+                {isRecovering ? 'Cancelar' : (isRegistering ? 'Já tem conta? Faça login' : 'Primeiro acesso? Cadastre-se')}
               </button>
+
+              <div className="flex justify-center pt-2">
+                <a
+                  href="/"
+                  className="flex items-center gap-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white transition-colors"
+                >
+                  <span className="material-symbols-outlined text-lg">arrow_back</span>
+                  Voltar para o início
+                </a>
+              </div>
             </div>
           </form>
         </div>
