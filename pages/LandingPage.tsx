@@ -92,44 +92,50 @@ const LandingPage: React.FC = () => {
         </section>
 
         {/* Dynamic Agenda Section */}
-        {publicEvents.length > 0 && (
-          <section id="giras" className="py-24 bg-[#0B1610] relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
-            <div className="max-w-[1200px] mx-auto px-6 relative z-10">
-              <div className="text-center max-w-2xl mx-auto mb-16">
-                <span className="text-primary text-[10px] font-bold uppercase tracking-[0.3em]">Agenda Aberta</span>
-                <h2 className="text-4xl font-serif font-black text-white leading-tight italic mt-2 mb-4">Próximas Giras e Eventos</h2>
-                <p className="text-[#9db9a6]">Participe de nossos encontros abertos à comunidade. Todos são bem-vindos para receber o axé.</p>
-              </div>
+        <section id="giras" className="py-24 bg-[#0B1610] relative overflow-hidden">
+          {publicEvents.length > 0 ? (
+            <>
+              <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+              <div className="max-w-[1200px] mx-auto px-6 relative z-10">
+                <div className="text-center max-w-2xl mx-auto mb-16">
+                  <span className="text-primary text-[10px] font-bold uppercase tracking-[0.3em]">Agenda Aberta</span>
+                  <h2 className="text-4xl font-serif font-black text-white leading-tight italic mt-2 mb-4">Próximas Giras e Eventos</h2>
+                  <p className="text-[#9db9a6]">Participe de nossos encontros abertos à comunidade. Todos são bem-vindos para receber o axé.</p>
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {publicEvents.map(event => (
-                  <div key={event.id} className="bg-white/5 border border-white/10 rounded-3xl p-6 hover:bg-white/10 transition-colors group">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="size-10 rounded-full bg-primary flex items-center justify-center text-white">
-                        <span className="material-symbols-outlined text-lg">calendar_month</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {publicEvents.map(event => (
+                    <div key={event.id} className="bg-white/5 border border-white/10 rounded-3xl p-6 hover:bg-white/10 transition-colors group">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="size-10 rounded-full bg-primary flex items-center justify-center text-white">
+                          <span className="material-symbols-outlined text-lg">calendar_month</span>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-[#9db9a6]">
+                            {new Date(event.event_date).toLocaleDateString('pt-BR', { weekday: 'long' })}
+                          </p>
+                          <p className="text-white font-bold text-lg leading-none">
+                            {new Date(event.event_date).getDate()} {new Date(event.event_date).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#9db9a6]">
-                          {new Date(event.event_date).toLocaleDateString('pt-BR', { weekday: 'long' })}
-                        </p>
-                        <p className="text-white font-bold text-lg leading-none">
-                          {new Date(event.event_date).getDate()} {new Date(event.event_date).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}
-                        </p>
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">{event.title}</h3>
+                      <p className="text-sm text-[#9db9a6] line-clamp-3">{event.description || 'Evento aberto ao público.'}</p>
+                      <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-xs font-bold text-primary">
+                        <span className="material-symbols-outlined text-sm">schedule</span>
+                        {event.event_time.slice(0, 5)}h
                       </div>
                     </div>
-                    <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">{event.title}</h3>
-                    <p className="text-sm text-[#9db9a6] line-clamp-3">{event.description || 'Evento aberto ao público.'}</p>
-                    <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-xs font-bold text-primary">
-                      <span className="material-symbols-outlined text-sm">schedule</span>
-                      {event.event_time.slice(0, 5)}h
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <span className="text-gray-500">Nenhum evento público agendado no momento.</span>
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
         {/* Gallery Section */}
         {gallery.length > 0 && (
@@ -153,8 +159,8 @@ const LandingPage: React.FC = () => {
         )}
 
         {/* Location Section */}
-        {(settings?.google_maps_iframe || settings?.address) && (
-          <section id="localizacao" className="py-24 bg-gray-50 dark:bg-[#0f1f15] border-t border-gray-200 dark:border-white/5">
+        <section id="localizacao" className="py-24 bg-gray-50 dark:bg-[#0f1f15] border-t border-gray-200 dark:border-white/5">
+          {(settings?.google_maps_iframe || settings?.address) ? (
             <div className="max-w-[1200px] mx-auto px-6 grid md:grid-cols-2 gap-12 items-start">
               <div className="space-y-8">
                 <div>
@@ -215,8 +221,12 @@ const LandingPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </section>
-        )}
+          ) : (
+            <div className="text-center py-12">
+              <span className="text-gray-500 animate-pulse">Carregando informações...</span>
+            </div>
+          )}
+        </section>
       </main>
 
       <footer className="bg-accent-brown dark:bg-[#0B1610] text-white py-16 px-6 border-t-[6px] border-primary">
