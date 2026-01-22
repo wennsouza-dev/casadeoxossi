@@ -73,11 +73,13 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                             </div>
 
                             <div className="flex items-center gap-2 bg-[#E8F5E9] dark:bg-primary/10 w-fit px-4 py-2 rounded-full border border-primary/20">
-                                <span className="text-primary font-bold text-sm">14 Outubro, 2023</span>
+                                <span className="text-primary font-bold text-sm capitalize">
+                                    {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                </span>
                                 <span className="material-symbols-outlined text-primary text-sm">spa</span>
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                                 {/* Agenda de Giras */}
                                 <div className="bg-white dark:bg-surface-dark rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-border-dark">
@@ -108,7 +110,7 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                                                                 {event.title}
                                                             </h4>
                                                             <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
-                                                                {new Date(event.event_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                                                {new Date(event.event_date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                                                             </span>
                                                         </div>
                                                         <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">
@@ -125,7 +127,7 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                                 </div>
 
                                 {/* Pedidos de Doações */}
-                                <div className="bg-white dark:bg-surface-dark rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-border-dark flex flex-col">
+                                <div className="bg-white dark:bg-surface-dark rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-border-dark flex flex-col h-full">
                                     <div className="flex items-center justify-between mb-6">
                                         <div className="flex items-center gap-2">
                                             <span className="material-symbols-outlined text-primary">volunteer_activism</span>
@@ -136,14 +138,14 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
 
                                     <div className="space-y-4 flex-1">
                                         {donationItems.length === 0 ? (
-                                            <p className="text-sm text-gray-500 text-center py-4">Nenhum pedido de doação ativo no momento.</p>
+                                            <div className="flex flex-col items-center justify-center h-full py-8 text-center text-gray-400">
+                                                <span className="material-symbols-outlined text-4xl mb-2 opacity-50">volunteer_activism</span>
+                                                <p className="text-sm">Nenhum pedido de doação ativo no momento.</p>
+                                            </div>
                                         ) : (
                                             donationItems.map((item, index) => {
                                                 const total = item.pledges?.reduce((acc: number, p: any) => acc + p.quantity, 0) || 0;
                                                 const isFull = item.requested_quantity ? total >= item.requested_quantity : false;
-
-                                                // Skip if full (optional functionality, but usually dashboard shows active needs)
-                                                // For now, listing top 3 regardless of fullness, but showcasing status
 
                                                 return (
                                                     <div key={item.id} className={`${index === 0 ? 'bg-[#FFF8E1] dark:bg-amber-900/20 border-[#FFE082] dark:border-amber-700/30' : 'border-gray-100 dark:border-border-dark'} p-5 rounded-2xl border relative`}>
@@ -179,57 +181,6 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                                                 );
                                             })
                                         )}
-                                    </div>
-                                </div>
-
-                                {/* Checklist */}
-                                <div className="bg-[#F1F8F6] dark:bg-[#1A2C22] rounded-3xl p-6 shadow-sm border border-primary/10 flex flex-col h-full">
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div className="flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-primary">checklist</span>
-                                            <div>
-                                                <h3 className="text-xl font-bold text-gray-900 dark:text-white font-serif">Preparação Pessoal</h3>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-xs font-bold text-primary block">3/5</span>
-                                            <span className="text-[10px] font-bold text-primary block uppercase">Concluído</span>
-                                        </div>
-                                    </div>
-
-                                    <p className="text-xs text-gray-500 dark:text-[#9db9a6] italic mb-6">"O que levar na Gira - Checklist de fundamentos"</p>
-
-                                    <div className="space-y-3 flex-1">
-                                        <div className="bg-white dark:bg-surface-dark p-3 rounded-xl flex items-center gap-3 shadow-sm">
-                                            <div className="size-5 rounded-full bg-primary flex items-center justify-center text-white">
-                                                <span className="material-symbols-outlined text-[14px]">check</span>
-                                            </div>
-                                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Roupa Branca limpa</span>
-                                        </div>
-                                        <div className="bg-white dark:bg-surface-dark p-3 rounded-xl flex items-center gap-3 shadow-sm">
-                                            <div className="size-5 rounded-full bg-primary flex items-center justify-center text-white">
-                                                <span className="material-symbols-outlined text-[14px]">check</span>
-                                            </div>
-                                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Guias de Proteção</span>
-                                        </div>
-                                        <div className="bg-white dark:bg-surface-dark p-3 rounded-xl flex items-center gap-3 shadow-sm">
-                                            <div className="size-5 rounded-full border-2 border-gray-200 dark:border-gray-600"></div>
-                                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Pano de Cabeça</span>
-                                        </div>
-                                        <div className="bg-white dark:bg-surface-dark p-3 rounded-xl flex items-center gap-3 shadow-sm">
-                                            <div className="size-5 rounded-full bg-primary flex items-center justify-center text-white">
-                                                <span className="material-symbols-outlined text-[14px]">check</span>
-                                            </div>
-                                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Toalha de Batismo</span>
-                                        </div>
-                                        <div className="bg-white dark:bg-surface-dark p-3 rounded-xl flex items-center gap-3 shadow-sm">
-                                            <div className="size-5 rounded-full border-2 border-gray-200 dark:border-gray-600"></div>
-                                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Amuleto Pessoal</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-6 pt-6 border-t border-primary/10 text-center">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#9db9a6]">Tudo pronto para a Gira?</p>
                                     </div>
                                 </div>
                             </div>

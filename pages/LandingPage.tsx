@@ -112,10 +112,10 @@ const LandingPage: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-[10px] font-bold uppercase tracking-widest text-[#9db9a6]">
-                            {new Date(event.event_date).toLocaleDateString('pt-BR', { weekday: 'long' })}
+                            {new Date(event.event_date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long' })}
                           </p>
                           <p className="text-white font-bold text-lg leading-none">
-                            {new Date(event.event_date).getDate()} {new Date(event.event_date).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}
+                            {new Date(event.event_date + 'T12:00:00').getDate()} {new Date(event.event_date + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}
                           </p>
                         </div>
                       </div>

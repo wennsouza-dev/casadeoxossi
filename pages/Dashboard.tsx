@@ -12,6 +12,8 @@ import { supabase } from '../lib/supabase';
 const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [memberCount, setMemberCount] = React.useState<number>(0);
   const [loading, setLoading] = React.useState(true);
+  const [upcomingEvents, setUpcomingEvents] = React.useState<any[]>([]);
+  const [nextObligation, setNextObligation] = React.useState<any>(null);
 
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [userName, setUserName] = React.useState('Usuário');
@@ -39,7 +41,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       const dateOptions: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' };
       setCurrentDate(new Date().toLocaleDateString('pt-BR', dateOptions));
 
-      // 3. Fetch Stats
+      // 3. Fetch Stats & Events
       try {
         const { count, error } = await supabase
           .from('members')
@@ -48,6 +50,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         if (!error && count !== null) {
           setMemberCount(count);
         }
+
+        // Fetch Upcoming Events
+        const today = new Date().toISOString().split('T')[0];
+        const { data: events } = await supabase
+          .from('calendar_events')
+          .select('*')
+          .gte('event_date', today)
+          .order('event_date', { ascending: true })
+          .limit(5);
+
+        if (events) {
+          setUpcomingEvents(events);
+          // Find next obligation (first event that isn't passed, logically sorted by API)
+          // Assuming 'Obrigação' or generic event is what they want.
+          // If there's a specific type 'Obrigação', filter for it. For now, taking the very next event.
+          setNextObligation(events[0]);
+        }
+
       } catch (err) {
         console.error(err);
       } finally {
@@ -148,14 +168,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 </div>
                 <div className="relative z-10">
                   <p className="text-sm font-medium text-white/70 mb-2">Próxima Obrigação</p>
-                  <p className="text-2xl font-black text-white mb-1">Toque de Oxóssi</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="material-symbols-outlined text-white/80 text-sm">schedule</span>
-                    <span className="text-sm font-bold text-white/80">Sábado, 19:00h</span>
-                  </div>
-                  <div className="mt-3 inline-flex items-center px-3 py-1 rounded-full bg-white/20 text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm border border-white/10">
-                    5 dias restantes
-                  </div>
+                  {nextObligation ? (
+                    <>
+                      <p className="text-2xl font-black text-white mb-1">{nextObligation.title}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="material-symbols-outlined text-white/80 text-sm">schedule</span>
+                        <span className="text-sm font-bold text-white/80">
+                          {new Date(nextObligation.event_date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long' })}, {nextObligation.event_time.slice(0, 5)}h
+                        </span>
+                      </div>
+                      <div className="mt-3 inline-flex items-center px-3 py-1 rounded-full bg-white/20 text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm border border-white/10">
+                        {/* Dias restantes logic */}
+                        {Math.ceil((new Date(nextObligation.event_date).getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 3600 * 24))} dias restantes
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xl font-bold text-white/80">Nenhuma obrigação agendada</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -178,9 +207,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white">Próximos Eventos</h3>
                 </div>
                 <div className="p-4 flex flex-col gap-3 flex-1 overflow-y-auto">
-                  <div className="p-8 text-center text-gray-500 dark:text-[#9db9a6]">
-                    Nenhum evento agendado.
-                  </div>
+                  {upcomingEvents.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500 dark:text-[#9db9a6]">
+                      Nenhum evento agendado.
+                    </div>
+                  ) : (
+                    upcomingEvents.map(event => (
+                      <div key={event.id} className="flex gap-3 p-3 hover:bg-gray-50 dark:hover:bg-[#20362a] rounded-xl transition-colors">
+                        <div className="bg-primary/10 text-primary h-10 w-10 flex items-center justify-center rounded-lg font-bold text-xs flex-shrink-0 flex-col leading-none">
+                          <span>{new Date(event.event_date + 'T12:00:00').getDate()}</span>
+                          <span className="text-[8px] uppercase">{new Date(event.event_date + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-sm text-gray-900 dark:text-white">{event.title}</h4>
+                          <p className="text-xs text-gray-500 dark:text-[#9db9a6]">{event.event_time.slice(0, 5)}h • {event.type}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
                 <div className="p-4 pt-0">
                   <button className="w-full py-3 rounded-xl border border-gray-200 dark:border-[#3b5443] text-gray-600 dark:text-[#9db9a6] text-xs font-bold hover:bg-gray-100 dark:hover:bg-[#20362a] transition-all">
