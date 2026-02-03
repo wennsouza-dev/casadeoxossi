@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import MemberSidebar from '../components/MemberSidebar';
 import MemberSettings from './MemberSettings';
+import NotificationBell from '../components/NotificationBell';
 import { supabase } from '../lib/supabase';
 
 interface MemberDashboardProps {
@@ -15,8 +16,126 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
     const isSettingsPage = location.pathname.includes('/settings');
     const [events, setEvents] = useState<any[]>([]);
     const [donationItems, setDonationItems] = useState<any[]>([]);
+    const [attendanceMap, setAttendanceMap] = useState<Record<string, boolean>>({});
+    const [attendanceStats, setAttendanceStats] = useState<Record<string, { count: number, members: { name: string, avatarUrl: string }[] }>>({});
+    const [showAttendanceModal, setShowAttendanceModal] = useState<string | null>(null);
 
-    const [notifications, setNotifications] = useState<{ type: 'late' | 'pending_approval', message: string, total?: number, count?: number } | null>(null);
+    const [notifications, setNotifications] = useState<{ type: 'late' | 'pending_approval' | 'success', message: string, total?: number, count?: number } | null>(null);
+
+    const handleConfirmAttendance = async (eventId: string) => {
+        try {
+            console.log('Tentando confirmar presença...');
+            const email = localStorage.getItem('userEmail');
+            console.log('Email:', email);
+
+            if (!email) {
+                alert('Você precisa estar logado para confirmar presença.');
+                return;
+            }
+
+            const { data: member, error: memberError } = await supabase
+                .from('members')
+                .select('id, name:full_name, avatarUrl:avatar_url')
+                .eq('email', email)
+                .single();
+
+            if (memberError) {
+                console.error('Erro ao buscar membro:', memberError);
+                alert('Erro ao buscar seus dados de membro: ' + memberError.message);
+                return;
+            }
+
+            if (!member) {
+                console.error('Membro não encontrado para o email:', email);
+                alert('Seu cadastro de membro não foi encontrado. Contate o administrador.');
+                return;
+            }
+
+            console.log('Membro encontrado:', member.id);
+
+            const { error } = await supabase
+                .from('event_attendance')
+                .insert({
+                    event_id: eventId,
+                    member_id: member.id,
+                    status: 'confirmed'
+                });
+
+            if (error) {
+                console.error('Erro no insert:', error);
+                throw error;
+            }
+
+            console.log('Sucesso no insert!');
+
+            // Update local state
+            setAttendanceMap(prev => ({ ...prev, [eventId]: true }));
+            setAttendanceStats(prev => {
+                const current = prev[eventId] || { count: 0, members: [] };
+                return {
+                    ...prev,
+                    [eventId]: {
+                        count: current.count + 1,
+                        members: [...current.members, { name: member.name, avatarUrl: member.avatarUrl || '' }]
+                    }
+                };
+            });
+            alert('Presença confirmada! Axé!');
+
+        } catch (error: any) {
+            console.error('Error confirming attendance:', error);
+            alert('Erro ao confirmar presença: ' + (error.message || JSON.stringify(error)));
+        }
+    };
+
+    const handleCancelAttendance = async (eventId: string) => {
+        if (!confirm('Deseja realmente cancelar sua presença nesta Gira?')) return;
+
+        try {
+            const email = localStorage.getItem('userEmail');
+            if (!email) {
+                alert('Você precisa estar logado. Tente sair e entrar novamente.');
+                return;
+            }
+
+            const { data: member } = await supabase.from('members').select('id, name:full_name').eq('email', email).single();
+            if (!member) return;
+
+            const { error } = await supabase
+                .from('event_attendance')
+                .delete()
+                .eq('event_id', eventId)
+                .eq('member_id', member.id);
+
+            if (error) throw error;
+
+            // Update local state
+            setAttendanceMap(prev => {
+                const newMap = { ...prev };
+                delete newMap[eventId];
+                return newMap;
+            });
+
+            setAttendanceStats(prev => {
+                const current = prev[eventId] || { count: 0, members: [] };
+                return {
+                    ...prev,
+                    [eventId]: {
+                        count: Math.max(0, current.count - 1),
+                        members: current.members.filter(m => m.name !== member.name)
+                    }
+                };
+            });
+
+            alert('Presença cancelada.');
+
+        } catch (error) {
+            console.error('Error canceling attendance:', error);
+            alert('Erro ao cancelar presença.');
+        }
+    };
+
+
 
     useEffect(() => {
         const checkMonthlyFees = async () => {
@@ -26,19 +145,17 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
             // 1. Get Member Info (Fee and ID)
             const { data: member } = await supabase
                 .from('members')
-                .select('id, monthly_fee, created_at, monthly_fee_status') // monthly_fee_status can override logic if 'Isento'
+                .select('id, monthly_fee, created_at, monthly_fee_status')
                 .eq('email', email)
                 .single();
 
             if (!member) return;
-            if (member.monthly_fee_status === 'Isento') return;
+            if (member.monthly_fee_status === 'Isento') return; // Should we show 'Isento' status to user? Maybe.
 
             const monthlyFee = Number(member.monthly_fee) || 0;
             if (monthlyFee === 0) return;
 
-            // 2. Calculate months to check (from creation or Start of Year? Usually continuous, but let's check current year for MVP reliability or last 12 months)
-            // Let's look for "Open" months.
-            // Better: Get all payments for this member.
+            // 2. Get Payments
             const { data: payments } = await supabase
                 .from('member_payments')
                 .select('*')
@@ -52,9 +169,6 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
             let pendingApproval = false;
             let totalDebt = 0;
 
-            // Check only current year 2026 for now (as seen in screenshot) or rolling
-            // Assuming checks starting from Member Creation or recent times. Let's check last 6 months to avoid legacy debt pollution if any.
-
             for (let i = 0; i <= 5; i++) {
                 const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
                 // IF date is before member creation, skip
@@ -67,73 +181,125 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
 
                 // Status Logic
                 if (payment) {
-                    if (payment.status === 'approved') continue; // Paid
+                    if (payment.status === 'approved' || payment.status === 'paid') continue; // Paid
                     if (payment.status === 'pending' || payment.status === 'waiting_approval') {
-                        // If proof_url exists and status is pending, it is "Aguardando aprovação"
                         if (payment.proof_url) {
-                            // Only show "Aguardando" if it's the ONLY thing or priority?
-                            // User said: "se o filho já enviar o comprovante aparece que está aguardando aprovação"
-                            // If they are late for Jan and Feb, but sent Jan, showing "Aguardando" for Jan is nice, but "Atrasado" for Feb is urgent.
-                            // Let's count debt.
-                            // However, if they sent proof, we don't count as 'debt' for the red alert yet, maybe yellow alert.
-                            if (i === 0) pendingApproval = true; // Only care about current month waiting for simplified alert
+                            if (i === 0) pendingApproval = true;
                             continue;
                         }
                     }
-                    // If rejected, it counts as late/debt
                 }
 
-                // If no payment OR rejected
                 lateMonths.push(d.toLocaleString('pt-BR', { month: 'long' }));
                 totalDebt += monthlyFee;
             }
 
             if (lateMonths.length > 0) {
                 // Formatting message
-                if (lateMonths.length === 1) {
-                    setNotifications({
-                        type: 'late',
-                        message: `Você está atrasado com a mensalidade de ${lateMonths[0]}.`,
-                        total: totalDebt,
-                        count: 1
-                    });
-                } else {
-                    setNotifications({
-                        type: 'late',
-                        message: `Você possui ${lateMonths.length} mensalidades em atraso.`,
-                        total: totalDebt,
-                        count: lateMonths.length
-                    });
-                }
+                // Capitalize months
+                const formattedMonths = lateMonths.map(m => m.charAt(0).toUpperCase() + m.slice(1)).join(', ');
+
+                setNotifications({
+                    type: 'late',
+                    message: `Você possui pendências referente a: ${formattedMonths}.`,
+                    total: totalDebt,
+                    count: lateMonths.length
+                });
             } else if (pendingApproval) {
                 setNotifications({
                     type: 'pending_approval',
                     message: 'Seu pagamento está aguardando aprovação do pai de santo.'
+                });
+            } else {
+                setNotifications({
+                    type: 'success',
+                    message: 'Suas mensalidades estão em dia! Axé!'
                 });
             }
         };
 
         const fetchEvents = async () => {
             const today = new Date().toISOString().split('T')[0];
-            const { data } = await supabase
+            const { data: eventsData } = await supabase
                 .from('calendar_events')
                 .select('*')
                 .gte('event_date', today)
-                .order('event_date', { ascending: true })
-                .limit(3);
-            if (data) setEvents(data);
+                .order('event_date', { ascending: true });
+
+            if (eventsData) {
+                setEvents(eventsData);
+
+                const email = localStorage.getItem('userEmail');
+                if (email) {
+                    const { data: member } = await supabase.from('members').select('id').eq('email', email).single();
+                    if (member) {
+                        const eventIds = eventsData.map(e => e.id);
+
+                        // Check own attendance
+                        const { data: attendance } = await supabase
+                            .from('event_attendance')
+                            .select('event_id')
+                            .eq('member_id', member.id)
+                            .in('event_id', eventIds);
+
+                        if (attendance) {
+                            const map: Record<string, boolean> = {};
+                            attendance.forEach((a: any) => map[a.event_id] = true);
+                            setAttendanceMap(map);
+                        }
+
+                        // Get all attendance stats
+                        const { data: allAttendance } = await supabase
+                            .from('event_attendance')
+                            .select('event_id, members(name:full_name, avatarUrl:avatar_url)')
+                            .in('event_id', eventIds);
+
+                        if (allAttendance) {
+                            const stats: Record<string, { count: number, members: { name: string, avatarUrl: string }[] }> = {};
+                            allAttendance.forEach((a: any) => {
+                                if (!stats[a.event_id]) {
+                                    stats[a.event_id] = { count: 0, members: [] };
+                                }
+                                stats[a.event_id].count++;
+                                if (a.members) {
+                                    // Handle single member join (it returns an object, not array usually if FK is 1-to-many but here it is many-to-one so it returns ONE member per row)
+                                    // Wait, select('members(name)') returns a single object if relational.
+                                    // Let's coerce type
+                                    const memberData = Array.isArray(a.members) ? a.members[0] : a.members;
+                                    if (memberData) {
+                                        stats[a.event_id].members.push({ name: memberData.name, avatarUrl: memberData.avatarUrl });
+                                    }
+                                }
+                            });
+                            setAttendanceStats(stats);
+                        }
+                    }
+                }
+            }
         };
 
         const fetchDonations = async () => {
+            const today = new Date().toISOString().split('T')[0];
+
+            // Fetch items + parent list info
             const { data } = await supabase
                 .from('donation_items')
                 .select(`
                     *,
-                    pledges:donation_pledges (quantity)
+                    pledges:donation_pledges (quantity),
+                    list:donation_lists (event_date)
                 `)
-                .order('created_at', { ascending: false })
-                .limit(3);
-            if (data) setDonationItems(data);
+                .order('created_at', { ascending: false });
+
+            if (data) {
+                // Client-side filter: only show items from valid lists
+                const validItems = data.filter((item: any) => {
+                    if (!item.list || !item.list.event_date) return true; // No date = valid? Or assume valid.
+                    return item.list.event_date >= today;
+                }).slice(0, 3); // Apply limit after filtering
+
+                setDonationItems(validItems);
+            }
         };
 
         checkMonthlyFees();
@@ -146,12 +312,18 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
             <MemberSidebar onLogout={onLogout} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} userRole={userRole} />
 
             <main className="flex-1 ml-0 md:ml-72 flex flex-col h-screen overflow-y-auto p-6 md:p-10 relative">
-                <button
-                    onClick={() => setSidebarOpen(true)}
-                    className="md:hidden absolute top-6 left-6 p-2 bg-white dark:bg-surface-dark rounded-lg shadow-sm text-gray-500 dark:text-white z-10"
-                >
-                    <span className="material-symbols-outlined">menu</span>
-                </button>
+                <div className="flex justify-between items-center md:justify-end mb-4 md:mb-0">
+                    <button
+                        onClick={() => setSidebarOpen(true)}
+                        className="md:hidden p-2 bg-white dark:bg-surface-dark rounded-lg shadow-sm text-gray-500 dark:text-white z-10"
+                    >
+                        <span className="material-symbols-outlined">menu</span>
+                    </button>
+
+                    <div className="hidden md:block">
+                        <NotificationBell userRole="member" />
+                    </div>
+                </div>
 
                 {isSettingsPage ? (
                     <MemberSettings />
@@ -162,18 +334,24 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                             {/* Payment Notifications */}
                             {notifications && (
                                 <div className={`w-full rounded-2xl p-6 border flex items-start gap-4 shadow-sm ${notifications.type === 'late'
-                                        ? 'bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-400'
-                                        : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-700 dark:text-yellow-400'
+                                    ? 'bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-400'
+                                    : notifications.type === 'pending_approval'
+                                        ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-700 dark:text-yellow-400'
+                                        : 'bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400'
                                     }`}>
-                                    <div className={`p-2 rounded-full ${notifications.type === 'late' ? 'bg-red-500/20' : 'bg-yellow-500/20'
+                                    <div className={`p-2 rounded-full ${notifications.type === 'late' ? 'bg-red-500/20'
+                                        : notifications.type === 'pending_approval' ? 'bg-yellow-500/20'
+                                            : 'bg-green-500/20'
                                         }`}>
                                         <span className="material-symbols-outlined text-2xl">
-                                            {notifications.type === 'late' ? 'warning' : 'hourglass_top'}
+                                            {notifications.type === 'late' ? 'warning'
+                                                : notifications.type === 'pending_approval' ? 'hourglass_top' : 'check_circle'}
                                         </span>
                                     </div>
                                     <div className="flex-1">
                                         <h3 className="font-bold text-lg mb-1">
-                                            {notifications.type === 'late' ? 'Atenção!' : 'Pagamento em Análise'}
+                                            {notifications.type === 'late' ? 'Atenção!'
+                                                : notifications.type === 'pending_approval' ? 'Pagamento em Análise' : 'Em Dia'}
                                         </h3>
                                         <p className="text-sm font-medium opacity-90 mb-2">
                                             {notifications.message}
@@ -233,31 +411,68 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                                         {events.length === 0 ? (
                                             <p className="text-sm text-gray-500 pl-8">Nenhum evento próximo agendado.</p>
                                         ) : (
-                                            events.map((event, index) => (
-                                                <div key={event.id} className="relative pl-8">
-                                                    <div className={`absolute left-0 top-0 size-6 rounded-full flex items-center justify-center text-white z-10 ${index === 0 ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'}`}>
-                                                        <span className="material-symbols-outlined text-[14px]">
-                                                            {event.type === 'Gira' ? 'church' : event.type === 'Função' ? 'lock' : 'event'}
-                                                        </span>
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex justify-between items-start mb-1">
-                                                            <h4 className={`font-bold text-sm ${index === 0 ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                                                                {event.title}
-                                                            </h4>
-                                                            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
-                                                                {new Date(event.event_date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                            events.map((event, index) => {
+                                                const isConfirmed = attendanceMap[event.id];
+                                                return (
+                                                    <div key={event.id} className="relative pl-8">
+                                                        <div className={`absolute left-0 top-0 size-6 rounded-full flex items-center justify-center text-white z-10 ${index === 0 ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                                                            <span className="material-symbols-outlined text-[14px]">
+                                                                {event.type === 'Gira' ? 'church' : event.type === 'Função' ? 'lock' : 'event'}
                                                             </span>
                                                         </div>
-                                                        <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">
-                                                            {event.event_time?.slice(0, 5)}h - {event.type}
-                                                        </p>
-                                                        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                                                            {event.description || 'Sem descrição.'}
-                                                        </p>
+                                                        <div>
+                                                            <div className="flex justify-between items-start mb-1">
+                                                                <h4 className={`font-bold text-sm ${index === 0 ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                                                    {event.title}
+                                                                </h4>
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                                                                    {new Date(event.event_date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-xs text-gray-500 dark:text-gray-500 mb-2">
+                                                                {event.event_time?.slice(0, 5)}h - {event.type}
+                                                            </p>
+                                                            <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">
+                                                                {event.description || 'Sem descrição.'}
+                                                            </p>
+
+                                                            {event.type === 'Gira' && (
+                                                                <div className="mt-3 flex flex-col gap-2">
+                                                                    <div className="flex items-center justify-between">
+                                                                        {isConfirmed ? (
+                                                                            <button
+                                                                                onClick={() => handleCancelAttendance(event.id)}
+                                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-xs font-bold hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors"
+                                                                            >
+                                                                                <span className="material-symbols-outlined text-sm">cancel</span>
+                                                                                Cancelar Presença
+                                                                            </button>
+                                                                        ) : (
+                                                                            <button
+                                                                                onClick={() => handleConfirmAttendance(event.id)}
+                                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary text-primary hover:bg-primary hover:text-white transition-all text-xs font-bold"
+                                                                            >
+                                                                                <span className="material-symbols-outlined text-sm">front_hand</span>
+                                                                                Confirmar Presença
+                                                                            </button>
+                                                                        )}
+
+                                                                        {attendanceStats[event.id]?.count > 0 && (
+                                                                            <button
+                                                                                onClick={() => setShowAttendanceModal(event.id)}
+                                                                                className="text-xs text-gray-500 hover:text-primary underline flex items-center gap-1"
+                                                                            >
+                                                                                <span className="material-symbols-outlined text-sm">group</span>
+                                                                                {attendanceStats[event.id].count} confirmados
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))
+                                                );
+                                            })
                                         )}
                                     </div>
                                 </div>
@@ -338,6 +553,35 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                     </>
                 )}
             </main >
+
+            {/* Attendance List Modal */}
+            {showAttendanceModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowAttendanceModal(null)}>
+                    <div className="bg-white dark:bg-surface-dark rounded-2xl w-full max-w-sm overflow-hidden shadow-xl" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-gray-100 dark:border-border-dark flex justify-between items-center">
+                            <h3 className="font-bold text-gray-900 dark:text-white">Filhos Confirmados</h3>
+                            <button onClick={() => setShowAttendanceModal(null)} className="text-gray-500 hover:bg-gray-100 rounded-full p-1">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <div className="max-h-80 overflow-y-auto p-4 space-y-3">
+                            {attendanceStats[showAttendanceModal]?.members.map((m, i) => (
+                                <div key={i} className="flex items-center gap-3">
+                                    <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                                        {m.avatarUrl ? <img src={m.avatarUrl} alt={m.name} className="size-full rounded-full object-cover" /> : m.name.charAt(0)}
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{m.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="p-4 bg-gray-50 dark:bg-black/20 text-center">
+                            <p className="text-sm font-bold text-primary">
+                                Total: {attendanceStats[showAttendanceModal]?.count} filhos
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };

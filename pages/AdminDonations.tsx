@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { supabase } from '../lib/supabase';
-import { format } from 'date-fns';
+import NotificationBell from '../components/NotificationBell';
 
 interface DonationList {
     id: string;
@@ -191,7 +191,7 @@ const AdminDonations: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         if (!selectedList) return;
 
         let text = `*Lista de Doação: ${selectedList.name}*`;
-        if (selectedList.event_date) text += `\n📅 Data: ${new Date(selectedList.event_date).toLocaleDateString('pt-BR')}`;
+        if (selectedList.event_date) text += `\n📅 Data: ${new Date(selectedList.event_date + 'T12:00:00').toLocaleDateString('pt-BR')}`;
         text += `\n\n`;
 
         const targetItems = item ? [item] : items;
@@ -231,9 +231,12 @@ const AdminDonations: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                         <span className="material-symbols-outlined text-sm">arrow_back</span> Voltar para Listas
                                     </button>
                                 ) : null}
-                                <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight break-words">
-                                    {view === 'lists' ? 'Gestão de Doações' : selectedList?.name}
-                                </h2>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight break-words">
+                                        {view === 'lists' ? 'Gestão de Doações' : selectedList?.name}
+                                    </h2>
+                                    <NotificationBell userRole="admin" />
+                                </div>
                                 <p className="text-gray-500 dark:text-[#9db9a6] mt-1 text-sm md:text-base break-words">
                                     {view === 'lists' ? 'Gerencie as listas de pedidos para as giras.' : selectedList?.description || 'Gerencie os itens desta lista.'}
                                 </p>
@@ -276,7 +279,10 @@ const AdminDonations: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                         </div>
                                         <div>
                                             <p className="text-[10px] items-center font-bold uppercase tracking-widest text-gray-400">
-                                                {list.event_date ? new Date(list.event_date).toLocaleDateString('pt-BR') : 'Sem Data'}
+                                                {list.event_date ? new Date(list.event_date + 'T12:00:00').toLocaleDateString('pt-BR') : 'Sem Data'}
+                                                {list.event_date && new Date(list.event_date + 'T12:00:00') < new Date(new Date().setHours(0, 0, 0, 0)) && (
+                                                    <span className="ml-2 text-red-500 bg-red-100 px-2 py-0.5 rounded-md">Essa lista já expirou</span>
+                                                )}
                                             </p>
                                             <h3 className="text-xl font-bold text-gray-900 dark:text-white">{list.name}</h3>
                                         </div>
@@ -389,7 +395,7 @@ const AdminDonations: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                         >
                             <option value="">Selecione uma lista...</option>
                             {lists.filter(l => l.id !== selectedList?.id).map(l => (
-                                <option key={l.id} value={l.id}>{l.name} ({l.event_date ? new Date(l.event_date).toLocaleDateString() : 'S/ Data'})</option>
+                                <option key={l.id} value={l.id}>{l.name} ({l.event_date ? new Date(l.event_date + 'T12:00:00').toLocaleDateString() : 'S/ Data'})</option>
                             ))}
                         </select>
 

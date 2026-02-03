@@ -34,12 +34,22 @@ const MemberDonations: React.FC = () => {
     const [pledgeInputs, setPledgeInputs] = useState<{ [key: string]: string }>({});
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [currentMemberId, setCurrentMemberId] = useState<string | null>(null);
+    const [editingPledgeId, setEditingPledgeId] = useState<string | null>(null);
+    const [editValue, setEditValue] = useState<string>('');
 
     useEffect(() => {
         const email = localStorage.getItem('userEmail');
         if (email) setUserEmail(email);
         fetchData();
+        fetchMemberId(email);
     }, []);
+
+    const fetchMemberId = async (email: string | null) => {
+        if (!email) return;
+        const { data } = await supabase.from('members').select('id').eq('email', email).single();
+        if (data) setCurrentMemberId(data.id);
+    };
 
     const fetchData = async () => {
         try {
@@ -102,8 +112,11 @@ const MemberDonations: React.FC = () => {
 
         setProcessingId(item.id);
         try {
-            const { data: memberData } = await supabase.from('members').select('id').eq('email', userEmail).single();
-            if (!memberData) throw new Error('Membro não encontrado');
+            if (!currentMemberId) {
+                // Should have fetched by now, but retry just in case
+                const { data: memberData } = await supabase.from('members').select('id').eq('email', userEmail).single();
+                if (!memberData) throw new Error('Membro não encontrado');
+            }
 
             const total = calculateTotalPledged(item);
             if (item.requested_quantity && (total + quantity > item.requested_quantity)) {
@@ -112,7 +125,7 @@ const MemberDonations: React.FC = () => {
 
             const { error } = await supabase.from('donation_pledges').insert({
                 item_id: item.id,
-                member_id: memberData.id,
+                member_id: currentMemberId!,
                 quantity: quantity
             });
 
@@ -126,6 +139,56 @@ const MemberDonations: React.FC = () => {
             alert(error.message);
         } finally {
             setProcessingId(null);
+        }
+    };
+
+    const handleDeletePledge = async (pledgeId: string) => {
+        if (!confirm('Tem certeza que deseja remover sua doação?')) return;
+        try {
+            const { error } = await supabase.from('donation_pledges').delete().eq('id', pledgeId);
+            if (error) throw error;
+            fetchData();
+        } catch (error) {
+            console.error('Error deleting pledge:', error);
+            alert('Erro ao remover doação.');
+        }
+    };
+
+    const startEditing = (pledge: Pledge) => {
+        setEditingPledgeId(pledge.id);
+        setEditValue(pledge.quantity.toString());
+    };
+
+    const cancelEditing = () => {
+        setEditingPledgeId(null);
+        setEditValue('');
+    };
+
+    const handleUpdatePledge = async (pledge: Pledge, item: DonationItem) => {
+        const newQuantity = parseFloat(editValue);
+        if (!newQuantity || newQuantity <= 0) return alert('Quantidade inválida.');
+
+        try {
+            // Check limits (excluding current pledge amount from calculation)
+            const currentTotal = calculateTotalPledged(item);
+            const available = (item.requested_quantity || Infinity) - (currentTotal - pledge.quantity);
+
+            if (item.requested_quantity && newQuantity > available) {
+                return alert(`Quantidade excede o limite. Disponível: ${available} ${item.unit}`);
+            }
+
+            const { error } = await supabase
+                .from('donation_pledges')
+                .update({ quantity: newQuantity })
+                .eq('id', pledge.id);
+
+            if (error) throw error;
+
+            setEditingPledgeId(null);
+            fetchData();
+        } catch (error) {
+            console.error('Error updating pledge:', error);
+            alert('Erro ao atualizar doação.');
         }
     };
 
@@ -154,6 +217,9 @@ const MemberDonations: React.FC = () => {
                     ) : (
                         lists.map(list => {
                             const expired = isListExpired(list.event_date);
+                            // Hide expired lists completely for members
+                            if (expired) return null;
+
                             if (list.items.length === 0) return null;
 
                             return (
@@ -163,7 +229,7 @@ const MemberDonations: React.FC = () => {
                                             {expired && <span className="text-[10px] font-bold uppercase tracking-widest bg-red-100 text-red-600 px-2 py-1 rounded-md mb-2 inline-block">Encerrada</span>}
                                             <h3 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
                                                 {list.name}
-                                                {list.event_date && <span className="text-sm font-normal text-gray-500 bg-gray-100 dark:bg-white/10 px-2 py-0.5 rounded-full whitespace-nowrap">{new Date(list.event_date).toLocaleDateString('pt-BR')}</span>}
+                                                {list.event_date && <span className="text-sm font-normal text-gray-500 bg-gray-100 dark:bg-white/10 px-2 py-0.5 rounded-full whitespace-nowrap">{new Date(list.event_date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>}
                                             </h3>
                                             <p className="text-gray-500 text-sm mt-1">{list.description}</p>
                                         </div>
@@ -229,13 +295,35 @@ const MemberDonations: React.FC = () => {
                                                             <p className="text-xs font-bold uppercase text-gray-400 mb-3">Quem vai levar</p>
                                                             <div className="flex flex-wrap gap-2">
                                                                 {item.pledges.map(pledge => (
-                                                                    <div key={pledge.id} className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 pr-3 pl-1 py-1 rounded-full border border-gray-100 dark:border-white/5">
+                                                                    <div key={pledge.id} className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 pr-3 pl-1 py-1 rounded-full border border-gray-100 dark:border-white/5 group">
                                                                         <div className="w-6 h-6 rounded-full bg-gray-200 bg-cover bg-center" style={{ backgroundImage: `url('${pledge.member.avatar_url}')` }}>
                                                                             {!pledge.member.avatar_url && <span className="material-symbols-outlined text-[14px] text-gray-500 flex items-center justify-center w-full h-full">person</span>}
                                                                         </div>
-                                                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                                                                            {pledge.member.full_name.split(' ')[0]} <span className="text-primary">({pledge.quantity})</span>
-                                                                        </span>
+
+                                                                        {editingPledgeId === pledge.id ? (
+                                                                            <div className="flex items-center gap-1">
+                                                                                <input
+                                                                                    type="number"
+                                                                                    className="w-12 h-6 text-xs p-1 rounded border border-gray-300"
+                                                                                    value={editValue}
+                                                                                    onChange={e => setEditValue(e.target.value)}
+                                                                                />
+                                                                                <button onClick={() => handleUpdatePledge(pledge, item)} className="text-green-500 hover:text-green-600"><span className="material-symbols-outlined text-[16px]">check</span></button>
+                                                                                <button onClick={cancelEditing} className="text-red-500 hover:text-red-600"><span className="material-symbols-outlined text-[16px]">close</span></button>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                                                                                {pledge.member.full_name.split(' ')[0]} <span className="text-primary">({pledge.quantity})</span>
+
+                                                                                {/* Edit/Delete Controls for own pledges */}
+                                                                                {currentMemberId === pledge.member_id && !expired && (
+                                                                                    <div className="hidden group-hover:flex items-center ml-1 border-l pl-1 border-gray-300 dark:border-gray-600">
+                                                                                        <button onClick={() => startEditing(pledge)} className="text-gray-400 hover:text-blue-500 p-0.5"><span className="material-symbols-outlined text-[14px]">edit</span></button>
+                                                                                        <button onClick={() => handleDeletePledge(pledge.id)} className="text-gray-400 hover:text-red-500 p-0.5"><span className="material-symbols-outlined text-[14px]">delete</span></button>
+                                                                                    </div>
+                                                                                )}
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                 ))}
                                                             </div>

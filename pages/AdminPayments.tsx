@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { supabase } from '../lib/supabase';
+import NotificationBell from '../components/NotificationBell';
 
 interface Payment {
     id: string;
@@ -21,7 +22,7 @@ interface MemberStatus {
     id: string;
     full_name: string;
     avatar_url: string | null;
-    status: 'up_to_date' | 'defaulting';
+    status: 'up_to_date' | 'defaulting' | 'exempt';
     pending_months: number;
     total_due: number;
     last_payment?: string;
@@ -33,13 +34,19 @@ const AdminPayments: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     const [memberStatuses, setMemberStatuses] = useState<MemberStatus[]>([]);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [processingId, setProcessingId] = useState<string | null>(null);
-    const [history, setHistory] = useState<Payment[]>([]);
+
+    // Filters
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
     const fetchData = async () => {
         try {
             setLoading(true);
 
-            // 1. Fetch Pending Payments (for approval list)
+            // 1. Fetch Pending Payments (Global or specific? Keeping global for attention, or maybe specific? 
+            // Usually pending payments are relevant regardless of month, but let's filter relevant to this view? 
+            // Actually user asked generally about "Em Dia" list. 
+            // Let's filter pending by the selected month/year too to align with "Gestão de Mensalidades" for that period.
             const { data: pendingData, error: pendingError } = await supabase
                 .from('member_payments')
                 .select(`
@@ -51,69 +58,53 @@ const AdminPayments: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
             if (pendingError) throw pendingError;
 
-            // 2. Fetch All Members
+            // 2. Fetch All Active Members
             const { data: membersData, error: membersError } = await supabase
                 .from('members')
-                .select('id, full_name, avatar_url, active')
-                .eq('active', true); // Only active members pay fees
+                .select('id, full_name, avatar_url, active, monthly_fee_status') // Added monthly_fee_status if needed later, but relying on active
+                .eq('active', true);
 
             if (membersError) throw membersError;
 
-            // 3. Fetch All Approved Payments (for debt calc)
-            const { data: approvedData, error: approvedError } = await supabase
+            // 3. Fetch Paid Payments for SELECTED Month/Year
+            const { data: paidData, error: paidError } = await supabase
                 .from('member_payments')
                 .select('*')
-                .eq('status', 'paid');
+                .eq('status', 'paid')
+                .eq('month', selectedMonth)
+                .eq('year', selectedYear);
 
-            if (approvedError) throw approvedError;
+            if (paidError) throw paidError;
 
-            // 4. Fetch History
-            const { data: historyData, error: historyError } = await supabase
-                .from('member_payments')
-                .select(`
-          *,
-          member:members (full_name)
-        `)
-                .neq('status', 'pending_approval')
-                .order('created_at', { ascending: false })
-                .limit(10);
-
-            if (historyError) throw historyError;
-            setHistory(historyData as any || []);
-
-
-            // --- Debt Calculation Logic ---
-            const currentYear = new Date().getFullYear(); // 2026 in simulator
-            const currentMonth = new Date().getMonth() + 1; // 1-12
+            // --- Status Calculation Logic for SELECTED Period ---
             const MONTHLY_FEE = 50.00;
 
             const statuses: MemberStatus[] = membersData.map(member => {
-                // Find paid months for current year
-                const memberPayments = approvedData?.filter(p => p.member_id === member.id && p.year === currentYear) || [];
-                const paidMonths = new Set(memberPayments.map(p => p.month));
+                // Check if this specific month is paid
+                const isPaid = paidData?.some(p => p.member_id === member.id);
+                // Check exemption
+                const isExempt = member.monthly_fee_status === 'exempt';
 
-                // Calculate pending months (up to current month)
-                let pendingCount = 0;
-                for (let m = 1; m <= currentMonth; m++) {
-                    if (!paidMonths.has(m)) {
-                        pendingCount++;
-                    }
-                }
-
-                const isDefaulting = pendingCount > 0;
+                let status: 'up_to_date' | 'defaulting' | 'exempt' = 'defaulting';
+                if (isExempt) status = 'exempt';
+                else if (isPaid) status = 'up_to_date';
 
                 return {
                     id: member.id,
                     full_name: member.full_name,
                     avatar_url: member.avatar_url,
-                    status: isDefaulting ? 'defaulting' : 'up_to_date',
-                    pending_months: pendingCount,
-                    total_due: pendingCount * MONTHLY_FEE,
-                    last_payment: memberPayments.length > 0
-                        ? `${memberPayments[memberPayments.length - 1].month}/${memberPayments[memberPayments.length - 1].year}`
-                        : 'Nunca'
+                    status: status,
+                    pending_months: (isPaid || isExempt) ? 0 : 1,
+                    total_due: (isPaid || isExempt) ? 0 : MONTHLY_FEE,
+                    last_payment: isPaid ? `${selectedMonth}/${selectedYear}` : (isExempt ? 'Isento' : 'Pendente')
                 };
             });
+
+            // Filter pending display list to only show relevant month/year? 
+            // Or keep all pending? Usually "Pending Approval" implies action needed NOW regardless of date.
+            // But if I want to see "January Pending", I should filter.
+            // Let's keep ALL pending for the "Pending" section because they need approval.
+            // BUT the "Em Dia/Em Atraso" lists are strictly filtered by selected month.
 
             setPayments(pendingData as any || []);
             setMemberStatuses(statuses);
@@ -127,7 +118,7 @@ const AdminPayments: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [selectedMonth, selectedYear]);
 
     const handleApprove = async (paymentId: string) => {
         setProcessingId(paymentId);
@@ -138,7 +129,7 @@ const AdminPayments: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 .eq('id', paymentId);
 
             if (error) throw error;
-            await fetchData(); // Refresh to update debt status
+            await fetchData();
         } catch (error) {
             console.error('Error approving:', error);
             alert('Erro ao aprovar.');
@@ -169,6 +160,7 @@ const AdminPayments: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     const pendingApprovals = payments;
     const defaultingMembers = memberStatuses.filter(m => m.status === 'defaulting');
     const upToDateMembers = memberStatuses.filter(m => m.status === 'up_to_date');
+    const exemptMembers = memberStatuses.filter(m => m.status === 'exempt');
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex overflow-hidden font-display">
@@ -176,12 +168,37 @@ const AdminPayments: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
             <main className="flex-1 ml-0 md:ml-72 p-6 md:p-10 overflow-y-auto">
                 <div className="max-w-7xl mx-auto space-y-8">
-                    <header className="flex items-center justify-between">
+                    <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
-                            <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Gestão de Mensalidades</h2>
+                            <div className="flex items-center gap-4">
+                                <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Gestão de Mensalidades</h2>
+                                <div className="mt-1"><NotificationBell userRole="admin" /></div>
+                            </div>
                             <p className="text-gray-500 dark:text-[#9db9a6] mt-1">Confira pagamentos e acompanhe a inadimplência.</p>
                         </div>
-                        <button title="Menu" onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-gray-500 rounded-lg bg-gray-100 dark:bg-white/5">
+
+                        <div className="flex items-center gap-2 w-full md:w-auto">
+                            <select
+                                value={selectedMonth}
+                                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                                className="flex-1 md:flex-none bg-gray-100 dark:bg-[#1A2C22] border-none rounded-lg text-sm font-bold text-gray-700 dark:text-gray-300 py-3 md:py-2 pl-3 pr-8 focus:ring-2 focus:ring-primary outline-none"
+                            >
+                                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                    <option key={m} value={m}>{new Date(0, m - 1).toLocaleString('pt-BR', { month: 'long' })}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={selectedYear}
+                                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                                className="flex-1 md:flex-none bg-gray-100 dark:bg-[#1A2C22] border-none rounded-lg text-sm font-bold text-gray-700 dark:text-gray-300 py-3 md:py-2 pl-3 pr-8 focus:ring-2 focus:ring-primary outline-none"
+                            >
+                                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
+                                    <option key={y} value={y}>{y}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <button title="Menu" onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-gray-500 rounded-lg bg-gray-100 dark:bg-white/5 absolute top-6 right-6 md:static">
                             <span className="material-symbols-outlined">menu</span>
                         </button>
                     </header>
@@ -247,7 +264,7 @@ const AdminPayments: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                     <span className="w-2 h-2 rounded-full bg-red-500"></span>
                                     Em Atraso ({defaultingMembers.length})
                                 </h3>
-                                <span className="text-xs text-gray-400">Ano: {new Date().getFullYear()}</span>
+                                <span className="text-xs text-gray-400">{selectedMonth}/{selectedYear}</span>
                             </div>
 
                             <div className="space-y-4">
@@ -262,7 +279,7 @@ const AdminPayments: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                             </div>
                                             <div>
                                                 <p className="font-bold text-gray-900 dark:text-white text-sm">{member.full_name}</p>
-                                                <p className="text-xs text-red-500 font-bold">{member.pending_months} meses em aberto</p>
+                                                <p className="text-xs text-red-500 font-bold">Pendente</p>
                                             </div>
                                         </div>
                                         <div className="text-right">
@@ -285,7 +302,7 @@ const AdminPayments: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
                             <div className="space-y-3">
                                 {upToDateMembers.length === 0 && (
-                                    <p className="text-center text-gray-400 text-sm py-4">Nenhum filho em dia neste momento.</p>
+                                    <p className="text-center text-gray-400 text-sm py-4">Nenhum filho em dia neste mês.</p>
                                 )}
                                 {upToDateMembers.map(member => (
                                     <div key={member.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
@@ -299,6 +316,29 @@ const AdminPayments: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                     </div>
                                 ))}
                             </div>
+
+                            {/* Exempt Members Section (Inside same card or separate?) Let's put it at bottom of Em Dia card for now or separate? Separate is clearer. */}
+                            {exemptMembers.length > 0 && (
+                                <div className="mt-8 pt-6 border-t border-gray-100 dark:border-white/10">
+                                    <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2 mb-4">
+                                        <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                                        Isentos ({exemptMembers.length})
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {exemptMembers.map(member => (
+                                            <div key={member.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors opacity-75">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-8 w-8 rounded-full bg-gray-200 bg-cover bg-center" style={{ backgroundImage: `url('${member.avatar_url}')` }}>
+                                                        {!member.avatar_url && <span className="material-symbols-outlined text-gray-400 h-full flex items-center justify-center text-xs">person</span>}
+                                                    </div>
+                                                    <p className="font-medium text-gray-900 dark:text-white text-sm">{member.full_name}</p>
+                                                </div>
+                                                <span className="text-gray-400 text-xs font-bold uppercase border border-gray-200 dark:border-white/10 px-2 py-1 rounded">Isento</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </section>
                     </div>
 

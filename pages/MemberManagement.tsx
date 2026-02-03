@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { supabase } from '../lib/supabase';
+import NotificationBell from '../components/NotificationBell';
 import { Member } from '../types';
 
 interface MemberManagementProps {
@@ -164,7 +165,10 @@ const MemberManagement: React.FC<MemberManagementProps> = ({ onLogout }) => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
               {/* Title ... */}
               <div>
-                <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">Filhos da Casa</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">Filhos da Casa</h2>
+                  <div className="mt-2"><NotificationBell userRole="admin" /></div>
+                </div>
                 <p className="text-gray-500 dark:text-[#9db9a6] mt-2 text-lg break-words">Gerencie os membros e suas obrigações.</p>
               </div>
               <button

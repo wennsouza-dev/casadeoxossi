@@ -8,6 +8,7 @@ interface DashboardProps {
 }
 
 import { supabase } from '../lib/supabase';
+import NotificationBell from '../components/NotificationBell';
 
 const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [memberCount, setMemberCount] = React.useState<number>(0);
@@ -102,10 +103,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <button className="p-2 rounded-full text-gray-500 dark:text-[#9db9a6] hover:bg-gray-100 dark:hover:bg-[#1A2C22] transition-colors relative">
-              <span className="material-symbols-outlined">notifications</span>
-              <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500"></span>
-            </button>
+            <NotificationBell userRole="admin" />
             <button className="p-2 rounded-full text-gray-500 dark:text-[#9db9a6] hover:bg-gray-100 dark:hover:bg-[#1A2C22] transition-colors">
               <span className="material-symbols-outlined">help</span>
             </button>

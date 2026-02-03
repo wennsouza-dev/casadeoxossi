@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { supabase } from '../lib/supabase';
+import NotificationBell from '../components/NotificationBell';
 
 const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     const [balance, setBalance] = useState({ income: 0, expenses: 0, total: 0 });
@@ -135,6 +136,71 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         setShowModal(true);
     };
 
+    const handleFixDuplicates = async () => {
+        if (!confirm(`Isso irá varrer os pagamentos de ${selectedMonth}/${selectedYear}: \n1. Remover duplicatas \n2. Corrigir valores zerados para R$ 50,00. \nConfirmar?`)) return;
+        setLoading(true);
+        try {
+            // 1. Fetch all paid payments for Selected Month/Year
+            const { data: payments, error } = await supabase
+                .from('member_payments')
+                .select('*')
+                .eq('month', selectedMonth)
+                .eq('year', selectedYear)
+                .eq('status', 'paid');
+
+            if (error) throw error;
+            if (!payments) return;
+
+            // 2. Group by member_id
+            const grouped = payments.reduce((acc: any, p: any) => {
+                if (!acc[p.member_id]) acc[p.member_id] = [];
+                acc[p.member_id].push(p);
+                return acc;
+            }, {});
+
+            let deletedCount = 0;
+
+            let fixedAmountCount = 0;
+
+            // 3. Process groups
+            for (const memberId in grouped) {
+                const memberPayments = grouped[memberId];
+
+                // A. Fix Duplicates
+                if (memberPayments.length > 1) {
+                    memberPayments.sort((a: any, b: any) => {
+                        if (a.proof_url && !b.proof_url) return -1;
+                        if (!a.proof_url && b.proof_url) return 1;
+                        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                    });
+                    const toDelete = memberPayments.slice(1);
+                    for (const p of toDelete) {
+                        const { error: delError } = await supabase.from('member_payments').delete().eq('id', p.id);
+                        if (!delError) deletedCount++;
+                    }
+                }
+
+                // B. Fix Zero Amounts
+                const validPayment = memberPayments[0]; // The one we kept (or the only one)
+                if (validPayment && validPayment.amount === 0) {
+                    const { error: updateError } = await supabase
+                        .from('member_payments')
+                        .update({ amount: 50 })
+                        .eq('id', validPayment.id);
+                    if (!updateError) fixedAmountCount++;
+                }
+            }
+            alert(`Correção concluída para ${selectedMonth}/${selectedYear}!\n\n- ${deletedCount} duplicatas removidas.\n- ${fixedAmountCount} valores corrigidos de R$ 0 para R$ 50.`);
+            fetchFinanceData(); // Refresh UI
+
+        } catch (error) {
+            console.error('Error fixing duplicates:', error);
+            alert('Erro ao tentar corrigir duplicatas.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex overflow-hidden font-display">
             <Sidebar onLogout={onLogout} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -148,6 +214,7 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                     <span className="material-symbols-outlined">menu</span>
                                 </button>
                                 <h2 className="text-xl font-bold text-gray-800 dark:text-white mr-4">Financeiro</h2>
+                                <NotificationBell userRole="admin" />
                             </div>
                         </div>
 
@@ -188,6 +255,13 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                         >
                             <span className="material-symbols-outlined text-[18px]">remove</span>
                             Saída
+                        </button>
+                        <button
+                            onClick={handleFixDuplicates}
+                            className="flex-1 md:flex-none bg-gray-800 hover:bg-gray-900 text-white px-4 py-3 md:py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-gray-800/20 transition-all whitespace-nowrap"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">build</span>
+                            Corrigir {selectedMonth}/{selectedYear}
                         </button>
                     </div>
                 </header>
@@ -427,7 +501,7 @@ const AdminFinance: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                     </div>
                 )}
             </main>
-        </div>
+        </div >
     );
 };
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import NotificationBell from './NotificationBell';
 
 interface MemberSidebarProps {
     onLogout: () => void;
@@ -50,9 +51,14 @@ const MemberSidebar: React.FC<MemberSidebarProps> = ({ onLogout, isOpen = false,
                         </div>
                     </div>
                     {onClose && (
-                        <button onClick={onClose} className="md:hidden text-gray-400 hover:text-gray-600">
-                            <span className="material-symbols-outlined">close</span>
-                        </button>
+                        <div className="md:hidden flex items-center gap-2">
+                            <div className="text-gray-400">
+                                <NotificationBell userRole={userRole || 'member'} />
+                            </div>
+                            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
                     )}
                 </div>
 
@@ -61,9 +67,9 @@ const MemberSidebar: React.FC<MemberSidebarProps> = ({ onLogout, isOpen = false,
                         <span className="material-symbols-outlined text-[20px]">dashboard</span>
                         <span className="text-sm font-bold">Painel</span>
                     </Link>
-                    <Link onClick={onClose} to="/filhos/agenda" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${isActive('/filhos/agenda')}`}>
-                        <span className="material-symbols-outlined text-[20px]">calendar_month</span>
-                        <span className="text-sm font-bold">Agenda</span>
+                    <Link onClick={onClose} to="/filhos/chat" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${isActive('/filhos/chat')}`}>
+                        <span className="material-symbols-outlined text-[20px]">forum</span>
+                        <span className="text-sm font-bold">Bate-papo</span>
                     </Link>
                     <Link onClick={onClose} to="/filhos/doacoes" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${isActive('/filhos/doacoes')}`}>
                         <span className="material-symbols-outlined text-[20px]">volunteer_activism</span>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { supabase } from '../lib/supabase';
+import NotificationBell from '../components/NotificationBell';
 
 interface CalendarEvent {
     id: string;
@@ -77,7 +78,7 @@ const AdminAgenda: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             fetchEvents();
         } catch (error) {
             console.error('Error saving event:', error);
-            alert('Erro ao salvar evento.');
+            alert('Erro ao salvar evento: ' + (error.message || JSON.stringify(error)));
         }
     };
 
@@ -92,6 +93,7 @@ const AdminAgenda: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                             <span className="material-symbols-outlined">menu</span>
                         </button>
                         <h2 className="text-xl font-bold text-gray-800 dark:text-white">Agenda da Casa</h2>
+                        <div className="ml-2"><NotificationBell userRole="admin" /></div>
                     </div>
                     <button
                         onClick={() => setShowModal(true)}

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { IMAGES } from '../constants';
 import { supabase } from '../lib/supabase';
+import NotificationBell from './NotificationBell';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -68,9 +69,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isOpen = false, onClose }) 
             <p className="text-xs text-gray-500 dark:text-[#9db9a6] mt-1">Portal Filhos</p>
           </div>
           {onClose && (
-            <button onClick={onClose} className="md:hidden ml-auto text-gray-400">
-              <span className="material-symbols-outlined">close</span>
-            </button>
+            <div className="md:hidden ml-auto flex items-center gap-2">
+              <NotificationBell userRole={'admin'} />
+              <button onClick={onClose} className="text-gray-400">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
           )}
         </div>
 

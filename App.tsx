@@ -13,6 +13,7 @@ import AdminPayments from './pages/AdminPayments';
 import MemberFinancial from './pages/MemberFinancial';
 import MemberDonations from './pages/MemberDonations';
 import AdminDonations from './pages/AdminDonations';
+import MemberChat from './pages/MemberChat';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -72,7 +73,7 @@ const App: React.FC = () => {
             isAuthenticated && (userRole === 'member' || userRole === 'admin') ? (
               <Routes>
                 <Route path="/" element={<MemberDashboard onLogout={handleLogout} userRole={userRole} />} />
-                <Route path="/agenda" element={<MemberDashboard onLogout={handleLogout} userRole={userRole} />} />
+                <Route path="/chat" element={<MemberChat />} />
                 <Route path="/financial" element={<MemberFinancial />} />
                 <Route path="/mensalidades" element={<MemberFinancial />} />
                 <Route path="/checklist" element={<MemberDashboard onLogout={handleLogout} userRole={userRole} />} />
