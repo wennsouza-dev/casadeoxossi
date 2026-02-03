@@ -31,13 +31,24 @@ const MemberChat: React.FC = () => {
         fetchMessages();
 
         // Subscribe to Realtime
+        console.log('Subscribing to chat_messages...');
         const channel = supabase
             .channel('public:chat_messages')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
-                // Fetch the new message with member details (since payload only has raw data)
-                fetchNewMessageDetails(payload.new.id);
+                console.log('New message received:', payload);
+                if (payload.new && payload.new.id) {
+                    fetchNewMessageDetails(payload.new.id);
+                }
             })
-            .subscribe();
+            .subscribe((status) => {
+                console.log('Subscription status:', status);
+                if (status === 'SUBSCRIBED') {
+                    console.log('Successfully subscribed to real-time chat updates');
+                }
+                if (status === 'CHANNEL_ERROR') {
+                    console.error('Realtime channel error');
+                }
+            });
 
         return () => {
             supabase.removeChannel(channel);

@@ -14,9 +14,10 @@ interface Notification {
 
 interface NotificationBellProps {
     userRole: 'admin' | 'member' | null;
+    align?: 'left' | 'right';
 }
 
-const NotificationBell: React.FC<NotificationBellProps> = ({ userRole }) => {
+const NotificationBell: React.FC<NotificationBellProps> = ({ userRole, align = 'right' }) => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
@@ -136,7 +137,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userRole }) => {
                         className="fixed inset-0 z-40 bg-black/5 md:bg-transparent"
                         onClick={() => { setIsOpen(false); markAsRead(); }}
                     ></div>
-                    <div className="absolute right-0 mt-2 w-80 md:w-96 bg-white dark:bg-[#1A2C22] rounded-2xl shadow-xl border border-gray-100 dark:border-[#28392e] overflow-hidden z-50">
+                    <div className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-2 w-80 md:w-96 bg-white dark:bg-[#1A2C22] rounded-2xl shadow-xl border border-gray-100 dark:border-[#28392e] overflow-hidden z-50`}>
                         <div className="p-4 border-b border-gray-100 dark:border-[#28392e] flex justify-between items-center">
                             <h3 className="font-bold text-gray-900 dark:text-white">Notificações</h3>
                             <button onClick={fetchNotifications} className="text-gray-400 hover:text-primary">
