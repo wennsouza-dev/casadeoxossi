@@ -13,6 +13,7 @@ interface MemberSidebarProps {
 const MemberSidebar: React.FC<MemberSidebarProps> = ({ onLogout, isOpen = false, onClose, userRole }) => {
     const location = useLocation();
     const [userProfile, setUserProfile] = useState<{ full_name: string, avatar_url: string | null } | null>(null);
+    const [hasUnreadChat, setHasUnreadChat] = useState(false);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -26,8 +27,43 @@ const MemberSidebar: React.FC<MemberSidebarProps> = ({ onLogout, isOpen = false,
                 if (data) setUserProfile(data);
             }
         };
+
+        const checkUnreadMessages = async () => {
+            const lastRead = localStorage.getItem('lastChatRead');
+            if (!lastRead) return; // Assume read if fresh or logic TBD
+
+            const { count } = await supabase
+                .from('chat_messages')
+                .select('*', { count: 'exact', head: true })
+                .gt('created_at', lastRead);
+
+            if (count && count > 0) {
+                setHasUnreadChat(true);
+            }
+        };
+
         fetchProfile();
-    }, []);
+        checkUnreadMessages();
+
+        // Listen for internal read event (from MemberChat)
+        const handleChatRead = () => setHasUnreadChat(false);
+        window.addEventListener('chatRead', handleChatRead);
+
+        // Subscribe to chat count only if NOT in chat
+        const channel = supabase
+            .channel('public:chat_messages:sidebar')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, () => {
+                if (location.pathname !== '/filhos/chat') {
+                    setHasUnreadChat(true);
+                }
+            })
+            .subscribe();
+
+        return () => {
+            window.removeEventListener('chatRead', handleChatRead);
+            supabase.removeChannel(channel);
+        };
+    }, [location.pathname]);
 
     const isActive = (path: string) => {
         return location.pathname === path ? 'bg-[#E8F5E9] text-primary dark:bg-primary/20 dark:text-primary' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5';
@@ -67,9 +103,14 @@ const MemberSidebar: React.FC<MemberSidebarProps> = ({ onLogout, isOpen = false,
                         <span className="material-symbols-outlined text-[20px]">dashboard</span>
                         <span className="text-sm font-bold">Painel</span>
                     </Link>
-                    <Link onClick={onClose} to="/filhos/chat" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${isActive('/filhos/chat')}`}>
+                    <Link onClick={onClose} to="/filhos/chat" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${isActive('/filhos/chat')} relative`}>
                         <span className="material-symbols-outlined text-[20px]">forum</span>
-                        <span className="text-sm font-bold">Bate-papo</span>
+                        <div className="flex-1 flex justify-between items-center">
+                            <span className="text-sm font-bold">Bate-papo</span>
+                            {hasUnreadChat && (
+                                <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-sm shadow-red-500/50"></span>
+                            )}
+                        </div>
                     </Link>
                     <Link onClick={onClose} to="/filhos/doacoes" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${isActive('/filhos/doacoes')}`}>
                         <span className="material-symbols-outlined text-[20px]">volunteer_activism</span>

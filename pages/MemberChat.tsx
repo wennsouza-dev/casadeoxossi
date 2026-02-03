@@ -26,8 +26,14 @@ const MemberChat: React.FC = () => {
             if (!email) return;
             const { data } = await supabase.from('members').select('id, full_name, avatar_url').eq('email', email).single();
             if (data) setCurrentMember(data);
+
         };
         fetchCurrentMember();
+
+        // Mark as read on enter
+        localStorage.setItem('lastChatRead', new Date().toISOString());
+        window.dispatchEvent(new Event('chatRead'));
+
         fetchMessages();
 
         // Subscribe to Realtime
@@ -38,6 +44,9 @@ const MemberChat: React.FC = () => {
                 console.log('New message received:', payload);
                 if (payload.new && payload.new.id) {
                     fetchNewMessageDetails(payload.new.id);
+                    // If we are here, we are seeing the message, so update read time
+                    localStorage.setItem('lastChatRead', new Date().toISOString());
+                    window.dispatchEvent(new Event('chatRead'));
                 }
             })
             .subscribe((status) => {
