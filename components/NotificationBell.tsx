@@ -139,7 +139,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userRole, align = '
                     ></div>
                     <div
                         className={`
-                            fixed left-4 right-4 top-24 z-[60]
+                            fixed left-4 right-4 top-24 z-[100]
                             md:absolute md:inset-auto md:top-full md:mt-2 md:w-96
                             bg-white dark:bg-[#1A2C22] rounded-2xl shadow-xl border border-gray-100 dark:border-[#28392e] overflow-hidden
                             ${align === 'right' ? 'md:right-0' : 'md:left-0'}

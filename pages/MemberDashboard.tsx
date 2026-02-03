@@ -339,7 +339,7 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
             <MemberSidebar onLogout={onLogout} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} userRole={userRole} />
 
             <main className="flex-1 ml-0 md:ml-72 flex flex-col h-screen overflow-y-auto p-6 md:p-10 relative">
-                <div className="flex justify-between items-center md:justify-end mb-4 md:mb-0">
+                <div className="flex justify-between items-center md:justify-end mb-4 md:mb-0 relative z-40">
                     <button
                         onClick={() => setSidebarOpen(true)}
                         className="md:hidden p-2 bg-white dark:bg-surface-dark rounded-lg shadow-sm text-gray-500 dark:text-white z-10"
@@ -347,7 +347,7 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                         <span className="material-symbols-outlined">menu</span>
                     </button>
 
-                    <div className="hidden md:block">
+                    <div className="block">
                         <NotificationBell userRole="member" />
                     </div>
                 </div>

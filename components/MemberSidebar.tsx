@@ -88,9 +88,6 @@ const MemberSidebar: React.FC<MemberSidebarProps> = ({ onLogout, isOpen = false,
                     </div>
                     {onClose && (
                         <div className="md:hidden flex items-center gap-2">
-                            <div className="text-gray-400">
-                                <NotificationBell userRole={userRole || 'member'} align="left" />
-                            </div>
                             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                                 <span className="material-symbols-outlined">close</span>
                             </button>
