@@ -16,6 +16,7 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
     const isSettingsPage = location.pathname.includes('/settings');
     const [events, setEvents] = useState<any[]>([]);
     const [donationItems, setDonationItems] = useState<any[]>([]);
+    const [birthdays, setBirthdays] = useState<any[]>([]);
     const [attendanceMap, setAttendanceMap] = useState<Record<string, boolean>>({});
     const [attendanceStats, setAttendanceStats] = useState<Record<string, { count: number, members: { name: string, avatarUrl: string }[] }>>({});
     const [showAttendanceModal, setShowAttendanceModal] = useState<string | null>(null);
@@ -302,9 +303,35 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
             }
         };
 
+        const fetchBirthdays = async () => {
+            // Fetch members with birthdays
+            // Since we can't easily do "MONTH(birth_date) = X" in standard Postgrest helper without a computed column or RPC,
+            // we will fetch `birth_date, full_name, avatar_url` for all members and filter in JS. Not efficient for 1M users, but fine for simple org.
+
+            const { data } = await supabase
+                .from('members')
+                .select('id, full_name, avatar_url, birth_date')
+                .not('birth_date', 'is', null);
+
+            if (data) {
+                const currentMonth = new Date().getMonth() + 1;
+                const currentMonthBirthdays = data.filter((m: any) => {
+                    if (!m.birth_date) return false;
+                    const [_y, month, _d] = m.birth_date.split('-');
+                    return parseInt(month) === currentMonth;
+                }).map((m: any) => ({
+                    ...m,
+                    day: parseInt(m.birth_date.split('-')[2])
+                })).sort((a: any, b: any) => a.day - b.day);
+
+                setBirthdays(currentMonthBirthdays);
+            }
+        };
+
         checkMonthlyFees();
         fetchEvents();
         fetchDonations();
+        fetchBirthdays();
     }, []);
 
     return (
@@ -477,7 +504,7 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                                     </div>
                                 </div>
 
-                                {/* Pedidos de Doações */}
+                                { /* Pedidos de Doações */}
                                 <div className="bg-white dark:bg-surface-dark rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-border-dark flex flex-col h-full">
                                     <div className="flex items-center justify-between mb-6">
                                         <div className="flex items-center gap-2">
@@ -486,7 +513,7 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                                         </div>
                                         <Link to="/filhos/doacoes" className="text-primary hover:underline text-xs font-bold uppercase tracking-wider">Ver tudo</Link>
                                     </div>
-
+                                    {/* ... content ... */}
                                     <div className="space-y-4 flex-1">
                                         {donationItems.length === 0 ? (
                                             <div className="flex flex-col items-center justify-center h-full py-8 text-center text-gray-400">
@@ -533,6 +560,46 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                                             })
                                         )}
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* Aniversariantes */}
+                            <div className="bg-white dark:bg-surface-dark rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-border-dark mt-6">
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="bg-pink-100 dark:bg-pink-900/20 p-2 rounded-full text-pink-500">
+                                        <span className="material-symbols-outlined">cake</span>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white font-serif">Aniversariantes do Mês</h3>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">Celebre a vida dos nossos irmãos!</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {birthdays.length === 0 ? (
+                                        <div className="col-span-full text-center py-4 text-gray-400 text-sm">
+                                            Nenhum aniversariante neste mês.
+                                        </div>
+                                    ) : (
+                                        birthdays.map(b => (
+                                            <div key={b.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                                                <div className="size-10 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden flex items-center justify-center shrink-0">
+                                                    {b.avatar_url ? (
+                                                        <img src={b.avatar_url} alt={b.full_name} className="size-full object-cover" />
+                                                    ) : (
+                                                        <span className="material-symbols-outlined text-gray-400">person</span>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-sm text-gray-900 dark:text-white line-clamp-1">{b.full_name}</p>
+                                                    <div className="flex items-center gap-1 text-xs text-pink-500 font-bold">
+                                                        <span className="material-symbols-outlined text-[10px]">celebration</span>
+                                                        <span>Dia {b.day}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             </div>
 

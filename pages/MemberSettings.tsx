@@ -6,6 +6,8 @@ const MemberSettings: React.FC = () => {
     const [religiousName, setReligiousName] = useState('');
     const [email, setEmail] = useState('');
     const [role, setRole] = useState('');
+    const [birthDay, setBirthDay] = useState('');
+    const [birthMonth, setBirthMonth] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -28,7 +30,7 @@ const MemberSettings: React.FC = () => {
 
             const { data, error } = await supabase
                 .from('members')
-                .select('full_name, religious_name, avatar_url, email, role')
+                .select('full_name, religious_name, avatar_url, email, role, birth_date')
                 .eq('email', userEmail)
                 .single();
 
@@ -40,6 +42,12 @@ const MemberSettings: React.FC = () => {
                 setAvatarUrl(data.avatar_url);
                 setEmail(data.email || userEmail);
                 setRole(data.role || 'Membro');
+
+                if (data.birth_date) {
+                    const [year, month, day] = data.birth_date.split('-');
+                    setBirthDay(day);
+                    setBirthMonth(parseInt(month).toString());
+                }
             }
 
         } catch (err: any) {
@@ -81,6 +89,9 @@ const MemberSettings: React.FC = () => {
         }
     };
 
+    const processDay = (d: string) => d.padStart(2, '0');
+    const processMonth = (m: string) => m.padStart(2, '0');
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
@@ -90,12 +101,21 @@ const MemberSettings: React.FC = () => {
             const userEmail = localStorage.getItem('userEmail');
             if (!userEmail) throw new Error("No user email");
 
+            let birthDateToSave = null;
+            if (birthDay && birthMonth) {
+                // Use a leap year like 2000 to allow Feb 29
+                const d = processDay(birthDay);
+                const m = processMonth(birthMonth);
+                birthDateToSave = `2000-${m}-${d}`;
+            }
+
             const { error } = await supabase
                 .from('members')
                 .update({
                     full_name: fullName,
                     religious_name: religiousName,
-                    avatar_url: avatarUrl
+                    avatar_url: avatarUrl,
+                    birth_date: birthDateToSave
                 })
                 .eq('email', userEmail);
 
@@ -179,6 +199,42 @@ const MemberSettings: React.FC = () => {
                             placeholder="Ex: Ogum Beira Mar / Doçu"
                             className="w-full rounded-xl border-gray-200 dark:border-border-dark p-4 text-sm dark:text-white dark:bg-[#1A2C22] focus:ring-primary focus:border-primary"
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-[#9db9a6] mb-2">
+                            Aniversário (Dia/Mês)
+                        </label>
+                        <div className="flex gap-4">
+                            <input
+                                type="number"
+                                min="1"
+                                max="31"
+                                placeholder="Dia"
+                                value={birthDay}
+                                onChange={(e) => setBirthDay(e.target.value)}
+                                className="w-full rounded-xl border-gray-200 dark:border-border-dark p-4 text-sm dark:text-white dark:bg-[#1A2C22] focus:ring-primary focus:border-primary"
+                            />
+                            <select
+                                value={birthMonth}
+                                onChange={(e) => setBirthMonth(e.target.value)}
+                                className="w-full rounded-xl border-gray-200 dark:border-border-dark p-4 text-sm dark:text-white dark:bg-[#1A2C22] focus:ring-primary focus:border-primary"
+                            >
+                                <option value="">Mês</option>
+                                <option value="1">Janeiro</option>
+                                <option value="2">Fevereiro</option>
+                                <option value="3">Março</option>
+                                <option value="4">Abril</option>
+                                <option value="5">Maio</option>
+                                <option value="6">Junho</option>
+                                <option value="7">Julho</option>
+                                <option value="8">Agosto</option>
+                                <option value="9">Setembro</option>
+                                <option value="10">Outubro</option>
+                                <option value="11">Novembro</option>
+                                <option value="12">Dezembro</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div>
