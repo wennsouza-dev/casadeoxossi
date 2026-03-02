@@ -4,7 +4,7 @@ import MemberSidebar from '../components/MemberSidebar';
 import MemberSettings from './MemberSettings';
 import NotificationBell from '../components/NotificationBell';
 import { supabase } from '../lib/supabase';
-import { requestNotificationPermission, subscribeToPushNotifications, sendTestPush } from '../lib/push-notifications';
+import { requestNotificationPermission, subscribeToPushNotifications } from '../lib/push-notifications';
 
 interface MemberDashboardProps {
     onLogout: () => void;
@@ -384,89 +384,6 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                     <>
                         <div className="max-w-7xl mx-auto space-y-8 w-full mt-8 md:mt-0">
 
-                            {/* DEBUG: Test Push Button - REMOVER DEPOIS */}
-                            <button
-                                onClick={async () => {
-                                    let log = '';
-                                    try {
-                                        // Check browser support
-                                        log += `SW: ${'serviceWorker' in navigator}\n`;
-                                        log += `Push: ${'PushManager' in window}\n`;
-                                        log += `Notif: ${'Notification' in window}\n`;
-                                        log += `Perm: ${Notification.permission}\n`;
-
-                                        const email = localStorage.getItem('userEmail');
-                                        if (!email) { alert('Email não encontrado'); return; }
-
-                                        const { data: member } = await supabase.from('members').select('id').eq('email', email).single();
-                                        if (!member) { alert('Membro não encontrado'); return; }
-                                        log += `Member: ${member.id.substring(0, 8)}...\n`;
-
-                                        // Try to get SW registration
-                                        const reg = await navigator.serviceWorker.ready;
-                                        log += `SW ready: OK\n`;
-
-                                        // Check existing subscription
-                                        let sub = await reg.pushManager.getSubscription();
-                                        log += `Existing sub: ${sub ? 'SIM' : 'NÃO'}\n`;
-
-                                        if (!sub) {
-                                            const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-                                            log += `VAPID key: ${vapidKey ? vapidKey.substring(0, 10) + '...' : 'MISSING'}\n`;
-
-                                            if (vapidKey) {
-                                                const padding = '='.repeat((4 - vapidKey.length % 4) % 4);
-                                                const base64 = (vapidKey + padding).replace(/\-/g, '+').replace(/_/g, '/');
-                                                const rawData = window.atob(base64);
-                                                const key = new Uint8Array(rawData.length);
-                                                for (let i = 0; i < rawData.length; ++i) key[i] = rawData.charCodeAt(i);
-
-                                                try {
-                                                    sub = await reg.pushManager.subscribe({
-                                                        userVisibleOnly: true,
-                                                        applicationServerKey: key,
-                                                    });
-                                                    log += `New sub: OK\n`;
-                                                } catch (subErr: any) {
-                                                    log += `Sub ERROR: ${subErr.name}: ${subErr.message}\n`;
-                                                }
-                                            }
-                                        }
-
-                                        if (sub) {
-                                            const json = sub.toJSON();
-                                            log += `Endpoint: ${json.endpoint?.substring(0, 40)}...\n`;
-                                            log += `p256dh: ${json.keys?.p256dh ? 'OK' : 'MISSING'}\n`;
-                                            log += `auth: ${json.keys?.auth ? 'OK' : 'MISSING'}\n`;
-
-                                            // Save to DB
-                                            await supabase.from('push_subscriptions').delete().eq('member_id', member.id);
-                                            const { error: insertErr } = await supabase.from('push_subscriptions').insert([{
-                                                member_id: member.id,
-                                                subscription: json,
-                                            }]);
-                                            log += `DB save: ${insertErr ? 'ERRO: ' + insertErr.message : 'OK'}\n`;
-
-                                            // Send test push
-                                            const { data, error } = await supabase.functions.invoke('send-push', {
-                                                body: {
-                                                    memberId: member.id,
-                                                    title: 'Teste iOS 🍎',
-                                                    message: 'Push funcionando no iPhone!',
-                                                    url: '/'
-                                                }
-                                            });
-                                            log += `Push: ${error ? 'ERRO: ' + error.message : JSON.stringify(data)}\n`;
-                                        }
-                                    } catch (e: any) {
-                                        log += `EXCEPTION: ${e.name}: ${e.message}\n`;
-                                    }
-                                    alert(log);
-                                }}
-                                className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2"
-                            >
-                                🧪 Testar Push Notification
-                            </button>
 
                             {/* Payment Notifications */}
                             {notifications && (
