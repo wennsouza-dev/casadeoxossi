@@ -66,6 +66,20 @@ const AdminAgenda: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             const { error } = await supabase.from('calendar_events').insert(newEvent);
             if (error) throw error;
 
+            // Trigger web push notification for a new event
+            try {
+                await supabase.functions.invoke('send-push', {
+                    body: {
+                        broadcast: true,
+                        title: 'Nova Gira/Evento Agendado!',
+                        message: `${newEvent.title} marcado para o dia ${new Date(newEvent.event_date + 'T12:00:00').toLocaleDateString('pt-BR')}.`,
+                        url: '/'
+                    }
+                });
+            } catch (pushError) {
+                console.error('Falha ao enviar notificação push:', pushError);
+            }
+
             setShowModal(false);
             setNewEvent({
                 title: '',

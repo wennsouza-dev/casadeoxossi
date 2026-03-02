@@ -116,6 +116,23 @@ const MemberChat: React.FC = () => {
             console.error('Error sending message:', error);
             alert('Erro ao enviar mensagem.');
             setNewMessage(msg); // Restore if failed
+        } else {
+            // Trigger web push notification for a new chat message
+            try {
+                // Shorten message for notification
+                const shortMsg = msg.length > 50 ? msg.substring(0, 50) + '...' : msg;
+                await supabase.functions.invoke('send-push', {
+                    body: {
+                        broadcast: true,
+                        excludeMemberId: currentMember.id, // Don't notify the sender
+                        title: `Nova mensagem de ${currentMember.full_name.split(' ')[0]}`,
+                        message: shortMsg,
+                        url: '/filhos/chat'
+                    }
+                });
+            } catch (pushError) {
+                console.error('Falha ao enviar notificação push do chat:', pushError);
+            }
         }
     };
 

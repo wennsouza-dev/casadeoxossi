@@ -108,6 +108,21 @@ const AdminDonations: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         });
         if (!error) {
             alert('Lista criada!');
+
+            // Trigger web push notification for a new donation list
+            try {
+                await supabase.functions.invoke('send-push', {
+                    body: {
+                        broadcast: true,
+                        title: 'Novo Pedido de Doações!',
+                        message: `Uma nova lista de doações foi criada: ${listName}. Nos ajude com sua contribuição.`,
+                        url: '/filhos/doacoes'
+                    }
+                });
+            } catch (pushError) {
+                console.error('Falha ao enviar notificação push:', pushError);
+            }
+
             setShowListModal(false);
             resetListForm();
             fetchLists();

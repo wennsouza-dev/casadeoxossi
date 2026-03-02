@@ -123,12 +123,32 @@ const AdminPayments: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     const handleApprove = async (paymentId: string) => {
         setProcessingId(paymentId);
         try {
-            const { error } = await supabase
+            const { error, data } = await supabase
                 .from('member_payments')
                 .update({ status: 'paid' })
-                .eq('id', paymentId);
+                .eq('id', paymentId)
+                .select()
+                .single();
 
             if (error) throw error;
+
+            // Trigger web push notification
+            if (data && data.member_id) {
+                try {
+                    await supabase.functions.invoke('send-push', {
+                        body: {
+                            memberId: data.member_id,
+                            title: 'Pagamento Aprovado! 🎉',
+                            message: `Seu comprovante de R$ ${data.amount} referente a ${data.month}/${data.year} foi aprovado com sucesso.`,
+                            url: '/filhos/mensalidades'
+                        }
+                    });
+                } catch (pushError) {
+                    console.error('Falha ao enviar notificação push:', pushError);
+                    // Do not block the approval flow if push fails
+                }
+            }
+
             await fetchData();
         } catch (error: any) {
             console.error('Error approving:', error);

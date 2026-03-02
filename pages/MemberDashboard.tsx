@@ -4,9 +4,11 @@ import MemberSidebar from '../components/MemberSidebar';
 import MemberSettings from './MemberSettings';
 import NotificationBell from '../components/NotificationBell';
 import { supabase } from '../lib/supabase';
+import { requestNotificationPermission, subscribeToPushNotifications } from '../lib/push-notifications';
 
 interface MemberDashboardProps {
     onLogout: () => void;
+
     userRole?: 'admin' | 'member' | null;
 }
 
@@ -328,6 +330,28 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
             }
         };
 
+        const initPush = async () => {
+            const email = localStorage.getItem('userEmail');
+            if (!email) return;
+
+            const { data: member } = await supabase.from('members').select('id').eq('email', email).single();
+            if (member) {
+                // If permission is already granted, we can just ensure subscription
+                if (Notification.permission === 'granted') {
+                    await subscribeToPushNotifications(member.id);
+                } else if (Notification.permission !== 'denied') {
+                    // Ask for permission explicitly
+                    setTimeout(async () => {
+                        const perm = await requestNotificationPermission();
+                        if (perm === 'granted') {
+                            await subscribeToPushNotifications(member.id);
+                        }
+                    }, 2000); // 2 seconds delay to not overwhelm on login
+                }
+            }
+        };
+
+        initPush();
         checkMonthlyFees();
         fetchEvents();
         fetchDonations();
