@@ -360,23 +360,32 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
 
                             {/* Payment Notifications */}
                             {notifications && (
-                                <div className={`w-full rounded-2xl p-6 border flex items-start gap-4 shadow-sm ${notifications.type === 'late'
+                                <div className={`w-full rounded-2xl p-6 border flex flex-col md:flex-row items-start md:items-center gap-4 shadow-sm ${notifications.type === 'late'
                                     ? 'bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-400'
                                     : notifications.type === 'pending_approval'
                                         ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-700 dark:text-yellow-400'
                                         : 'bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400'
                                     }`}>
-                                    <div className={`p-2 rounded-full ${notifications.type === 'late' ? 'bg-red-500/20'
-                                        : notifications.type === 'pending_approval' ? 'bg-yellow-500/20'
-                                            : 'bg-green-500/20'
-                                        }`}>
-                                        <span className="material-symbols-outlined text-2xl">
-                                            {notifications.type === 'late' ? 'warning'
-                                                : notifications.type === 'pending_approval' ? 'hourglass_top' : 'check_circle'}
-                                        </span>
+                                    <div className="flex w-full md:w-auto items-start gap-4">
+                                        <div className={`p-2 rounded-full shrink-0 ${notifications.type === 'late' ? 'bg-red-500/20'
+                                            : notifications.type === 'pending_approval' ? 'bg-yellow-500/20'
+                                                : 'bg-green-500/20'
+                                            }`}>
+                                            <span className="material-symbols-outlined text-2xl">
+                                                {notifications.type === 'late' ? 'warning'
+                                                    : notifications.type === 'pending_approval' ? 'hourglass_top' : 'check_circle'}
+                                            </span>
+                                        </div>
+                                        <div className="flex-1 md:hidden">
+                                            <h3 className="font-bold text-lg mb-1">
+                                                {notifications.type === 'late' ? 'Atenção!'
+                                                    : notifications.type === 'pending_approval' ? 'Pagamento em Análise' : 'Em Dia'}
+                                            </h3>
+                                        </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <h3 className="font-bold text-lg mb-1">
+
+                                    <div className="flex-1 w-full text-left">
+                                        <h3 className="hidden md:block font-bold text-lg mb-1">
                                             {notifications.type === 'late' ? 'Atenção!'
                                                 : notifications.type === 'pending_approval' ? 'Pagamento em Análise' : 'Em Dia'}
                                         </h3>
@@ -384,7 +393,7 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                                             {notifications.message}
                                         </p>
                                         {notifications.total !== undefined && notifications.total > 0 && (
-                                            <div className="mt-2 inline-flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-lg border border-red-500/10">
+                                            <div className="mt-2 inline-flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-lg border border-red-500/10 w-full md:w-auto justify-between md:justify-start">
                                                 <span className="text-xs uppercase font-bold tracking-wider">Valor Total:</span>
                                                 <span className="font-black text-lg">
                                                     {notifications.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -395,7 +404,7 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                                     {notifications.type === 'late' && (
                                         <Link
                                             to="/filhos/mensalidades"
-                                            className="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-red-500/20 hover:bg-red-700 transition-colors self-center whitespace-nowrap"
+                                            className="w-full md:w-auto text-center px-4 py-3 md:py-2 bg-red-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-red-500/20 hover:bg-red-700 transition-colors whitespace-nowrap"
                                         >
                                             Regularizar
                                         </Link>

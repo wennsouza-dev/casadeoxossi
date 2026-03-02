@@ -130,9 +130,9 @@ const AdminPayments: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
             if (error) throw error;
             await fetchData();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error approving:', error);
-            alert('Erro ao aprovar.');
+            alert(`Erro ao aprovar: ${error.message || 'Erro desconhecido'}`);
         } finally {
             setProcessingId(null);
         }
