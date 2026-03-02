@@ -4,7 +4,7 @@ import MemberSidebar from '../components/MemberSidebar';
 import MemberSettings from './MemberSettings';
 import NotificationBell from '../components/NotificationBell';
 import { supabase } from '../lib/supabase';
-import { requestNotificationPermission, subscribeToPushNotifications } from '../lib/push-notifications';
+import { requestNotificationPermission, subscribeToPushNotifications, sendTestPush } from '../lib/push-notifications';
 
 interface MemberDashboardProps {
     onLogout: () => void;
@@ -336,17 +336,19 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
 
             const { data: member } = await supabase.from('members').select('id').eq('email', email).single();
             if (member) {
-                // If permission is already granted, we can just ensure subscription
+                console.log('[Push Init] Membro encontrado:', member.id, 'Permissão atual:', Notification.permission);
+                // Always try to re-subscribe to keep subscription fresh
                 if (Notification.permission === 'granted') {
-                    await subscribeToPushNotifications(member.id);
+                    const result = await subscribeToPushNotifications(member.id);
+                    console.log('[Push Init] Resultado da subscrição:', result);
                 } else if (Notification.permission !== 'denied') {
-                    // Ask for permission explicitly
                     setTimeout(async () => {
                         const perm = await requestNotificationPermission();
                         if (perm === 'granted') {
-                            await subscribeToPushNotifications(member.id);
+                            const result = await subscribeToPushNotifications(member.id);
+                            console.log('[Push Init] Resultado da subscrição após permissão:', result);
                         }
-                    }, 2000); // 2 seconds delay to not overwhelm on login
+                    }, 2000);
                 }
             }
         };
@@ -381,6 +383,26 @@ const MemberDashboard: React.FC<MemberDashboardProps> = ({ onLogout, userRole })
                 ) : (
                     <>
                         <div className="max-w-7xl mx-auto space-y-8 w-full mt-8 md:mt-0">
+
+                            {/* DEBUG: Test Push Button - REMOVER DEPOIS */}
+                            <button
+                                onClick={async () => {
+                                    const email = localStorage.getItem('userEmail');
+                                    if (!email) { alert('Email não encontrado'); return; }
+                                    const { data: member } = await supabase.from('members').select('id').eq('email', email).single();
+                                    if (!member) { alert('Membro não encontrado'); return; }
+
+                                    // First ensure subscription is fresh
+                                    const subResult = await subscribeToPushNotifications(member.id);
+                                    alert(`Subscrição: ${subResult ? 'OK' : 'FALHOU'}\nEnviando push de teste...`);
+
+                                    const result = await sendTestPush(member.id);
+                                    alert(result);
+                                }}
+                                className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+                            >
+                                🧪 Testar Push Notification
+                            </button>
 
                             {/* Payment Notifications */}
                             {notifications && (
